@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<title>{{ data.title }}</title>
+<style>
+  {{ style(component) }}
+  {{ style(component.header, data) }}
+  {{ style(component.footer, data) }}
+  {{ style(component.content) }}
+</style>
+</head>
+<body>
+
+{{ render(component.content, data.content) }}
+
+</body>
+</html>

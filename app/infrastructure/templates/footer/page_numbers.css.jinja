@@ -1,0 +1,12 @@
+@page {
+  @bottom-left {
+    content: "{{ data.title }}";
+    font-size: 8pt;
+    color: #6b7280;
+  }
+  @bottom-right {
+    content: "{{ labels.PAGE }} " counter(page) " {{ labels.PAGE_OF }} " counter(pages);
+    font-size: 8pt;
+    color: #6b7280;
+  }
+}

@@ -1,0 +1,62 @@
+/* Areas: the place of each part of the invoice on the paper */
+
+.area-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding-bottom: 5mm;
+  border-bottom: 1.5pt solid #111827;
+}
+.area-header .number {
+  font-size: 12pt;
+  font-weight: 700;
+  text-align: right;
+}
+.area-header .issue-date {
+  margin-top: 1mm;
+  font-size: 9.5pt;
+  font-weight: 400;
+}
+
+.area-parties {
+  display: flex;
+  gap: {{ dimensions.gap_mm }}mm;
+  margin-top: 7mm;
+}
+.area-supplier,
+.area-customer {
+  flex: none;
+  overflow-wrap: anywhere;
+}
+.area-supplier { width: {{ dimensions.slots["supplier"].width_mm }}mm; }
+.area-customer { width: {{ dimensions.slots["customer"].width_mm }}mm; }
+
+.area-items {
+  width: {{ dimensions.slots["items"].width_mm }}mm;
+  margin-top: 8mm;
+  border-collapse: collapse;
+}
+.area-items th {
+  padding: 2mm 2mm;
+  border-bottom: 1pt solid #111827;
+  font-size: 7.5pt;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-align: left;
+  color: #4b5563;
+}
+.area-items th.num { text-align: right; }
+
+.area-payments {
+  width: {{ dimensions.slots["payments"].width_mm }}mm;
+  margin-top: 7mm;
+  break-inside: avoid;
+}
+
+/* Styles of the children */
+
+{{ style(component.supplier) }}
+{{ style(component.customer) }}
+{{ style(component.items) }}
+{{ style(component.payments) }}

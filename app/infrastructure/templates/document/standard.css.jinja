@@ -1,0 +1,36 @@
+/* Paper, margins and background of every page */
+@page {
+  size: {{ dimensions.page.width_mm }}mm {{ dimensions.page.height_mm }}mm;
+  margin:
+    {{ dimensions.page.margin_top_mm }}mm
+    {{ dimensions.page.margin_right_mm }}mm
+    {{ dimensions.page.margin_bottom_mm }}mm
+    {{ dimensions.page.margin_left_mm }}mm;
+  background: #ffffff;
+}
+
+* { box-sizing: border-box; }
+
+/* Fonts */
+html {
+  font-family: "DejaVu Sans", "Segoe UI", Arial, sans-serif;
+  font-size: 9.5pt;
+  line-height: 1.45;
+  color: #111827;
+}
+
+body { margin: 0; }
+
+h1 {
+  margin: 0;
+  font-size: 20pt;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.label {
+  font-size: 7.5pt;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6b7280;
+}

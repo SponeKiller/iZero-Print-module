@@ -1,0 +1,39 @@
+name: Python Lint test
+
+on:
+  pull_request:  
+    branches:
+      - main
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.13'
+
+      - name: Install ruff package
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+
+      - name: Lint check via ruff
+        run: |
+          ruff check .
+
+      - name: Install alembic package
+        run: |
+          pip install alembic==1.15.2
+
+      - name: Check single Alembic head
+        run: |
+          heads=$(alembic heads | wc -l)
+          if [ "$heads" -ne 1 ]; then
+            echo "::error::Multiple Alembic heads detected, re-point down_revision of the newest migration:"
+            alembic heads
+            exit 1
+          fi

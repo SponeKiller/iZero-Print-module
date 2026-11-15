@@ -1,0 +1,12 @@
+<tr class="item">
+  <td class="description">{{ data.description }}</td>
+  <td class="num">{{ data.quantity }}</td>
+  <td>{{ data.unit or "" }}</td>
+  <td class="num">{{ data.unit_price }}</td>
+  <td class="num">
+    {%- if data.vat_rate is not none -%}
+    {{ data.vat_rate }}&nbsp;%
+    {%- endif -%}
+  </td>
+  <td class="num">{{ data.total }}</td>
+</tr>

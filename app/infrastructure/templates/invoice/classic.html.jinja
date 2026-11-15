@@ -1,0 +1,39 @@
+<header class="area-header">
+  <h1>{{ labels.TITLE }}</h1>
+  <div class="number">
+    <div class="label">{{ labels.NUMBER }}</div>
+    {{ data.number }}
+    <div class="issue-date">{{ labels.ISSUE_DATE }}: {{ data.issue_date }}</div>
+  </div>
+</header>
+
+<div class="area-parties">
+  <section class="area-supplier">
+    {{ render(component.supplier, data.supplier) }}
+  </section>
+  <section class="area-customer">
+    {{ render(component.customer, data.customer) }}
+  </section>
+</div>
+
+<table class="area-items">
+  <thead>
+    <tr>
+      <th>{{ component.items.labels.DESCRIPTION }}</th>
+      <th class="num">{{ component.items.labels.QUANTITY }}</th>
+      <th>{{ component.items.labels.UNIT }}</th>
+      <th class="num">{{ component.items.labels.UNIT_PRICE }}</th>
+      <th class="num">{{ component.items.labels.VAT_RATE }}</th>
+      <th class="num">{{ component.items.labels.TOTAL }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in data.items %}
+    {{ render(component.items, item) }}
+    {% endfor %}
+  </tbody>
+</table>
+
+<section class="area-payments">
+  {{ render(component.payments, data.payments) }}
+</section>

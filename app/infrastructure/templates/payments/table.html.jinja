@@ -1,0 +1,24 @@
+<div class="payments">
+  <table class="details">
+    <tr>
+      <td>{{ labels.DUE_DATE }}</td>
+      <td>{{ data.due_date }}</td>
+    </tr>
+    <tr>
+      <td>{{ labels.IBAN }}</td>
+      <td>{{ data.iban }}</td>
+    </tr>
+    {% if data.variable_symbol %}
+    <tr>
+      <td>{{ labels.VARIABLE_SYMBOL }}</td>
+      <td>{{ data.variable_symbol }}</td>
+    </tr>
+    {% endif %}
+  </table>
+  <div class="total">
+    <div class="label">{{ labels.AMOUNT_TO_PAY }}</div>
+    <div class="amount">
+      {{ data.amount_to_pay }}&nbsp;{{ data.currency }}
+    </div>
+  </div>
+</div>

@@ -1,0 +1,31 @@
+.payments {
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  gap: 10mm;
+}
+.payments .details {
+  flex: 1;
+  padding: 4mm 5mm;
+  background: #f3f4f6;
+  border-collapse: separate;
+}
+.payments .details td {
+  padding: 0.4mm 0;
+  vertical-align: top;
+  white-space: nowrap;
+}
+.payments .details td:first-child { padding-right: 5mm; color: #4b5563; }
+.payments .details td:last-child { font-weight: 600; }
+.payments .total {
+  min-width: 75mm;
+  padding: 4mm 5mm;
+  background: #111827;
+  color: #ffffff;
+}
+.payments .total .label { color: #d1d5db; }
+.payments .total .amount {
+  font-size: 15pt;
+  font-weight: 700;
+  white-space: nowrap;
+}

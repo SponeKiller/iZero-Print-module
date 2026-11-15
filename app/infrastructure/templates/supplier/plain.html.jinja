@@ -1,0 +1,15 @@
+<div class="supplier">
+  <div class="label">{{ labels.TITLE }}</div>
+  <div class="name">{{ data.name }}</div>
+  {{ render(component.address, data.address) }}
+  {% if data.company_id or data.vat_id %}
+  <div class="ids">
+    {% if data.company_id %}
+    <div>{{ labels.COMPANY_ID }}: {{ data.company_id }}</div>
+    {% endif %}
+    {% if data.vat_id %}
+    <div>{{ labels.VAT_ID }}: {{ data.vat_id }}</div>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>

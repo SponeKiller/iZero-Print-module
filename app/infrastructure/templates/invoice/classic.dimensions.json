@@ -1,0 +1,32 @@
+{
+  "needs": {
+    "min_width_mm": 178
+  },
+  "slots": {
+    "supplier": {
+      "width_mm": 84
+    },
+    "customer": {
+      "width_mm": 84
+    },
+    "items": {
+      "width_mm": 178
+    },
+    "payments": {
+      "width_mm": 178
+    }
+  },
+  "rows": [
+    [
+      "supplier",
+      "customer"
+    ],
+    [
+      "items"
+    ],
+    [
+      "payments"
+    ]
+  ],
+  "gap_mm": 10
+}

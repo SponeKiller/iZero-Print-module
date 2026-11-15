@@ -1,0 +1,62 @@
+from datetime import UTC, datetime, timedelta
+
+from app.application.ports.time_provider import TimeProvider
+
+
+class SystemTimeProvider(TimeProvider):
+    """Utility service for UTC time."""
+    
+    @staticmethod
+    def now() -> datetime:
+        """
+        Returns the current UTC time
+        
+        Returns:
+            datetime: current UTC time
+        """
+        return datetime.now(UTC)
+
+    @classmethod
+    def shifted_now(cls) -> datetime:
+        """
+        Returns the current UTC time shifted by 1 microsecond, so it is always
+        later than a time returned by an earlier call of `now`
+
+        Returns:
+            datetime: current UTC time + 1 microsecond
+        """
+        return cls.now() + timedelta(microseconds=1)
+
+    @classmethod
+    def get_expiration(
+        cls,
+        minutes: int | None = None,
+        days: int | None = None,
+    ) -> datetime:
+        """
+        Calculates expiration using the class's own 'now' method
+        (if no minutes and no days, returns now + 100ms)
+
+        Args:
+            minutes (int): minutes to expiration
+            days (int): days to expiration
+        Returns:
+            datetime: time of expiration (YYYY-MM-DD HH:MM:SS.ffffff±HH:MM)
+        """
+        base = cls.now()
+        if not minutes and not days:
+            return base + timedelta(milliseconds=100)
+        return base + timedelta(minutes=minutes or 0, days=days or 0)
+    
+    @staticmethod
+    def from_timestamp(ts: float) -> datetime:
+        """
+        Converts timestamp to UTC datetime.
+
+        Args:
+            ts (float): Unix timestamp
+
+        Returns:
+            datetime: UTC datetime
+        """
+        return datetime.fromtimestamp(ts, tz=UTC)

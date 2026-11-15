@@ -1,0 +1,93 @@
+"""initial: http audit tables
+
+Revision ID: 0001_initial
+Revises:
+Create Date: 2026-11-10 00:00:00.000000
+
+"""
+from collections.abc import Sequence
+
+import sqlalchemy as sa
+from alembic import op
+
+# revision identifiers, used by Alembic.
+revision: str = "0001_initial"
+down_revision: str | None = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
+
+
+def upgrade() -> None:
+    """Upgrade schema."""
+    op.create_table(
+        "internal_request_log",
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column("method", sa.String(length=10), nullable=False),
+        sa.Column("url", sa.Text(), nullable=False),
+        sa.Column("headers", sa.Text(), nullable=True),
+        sa.Column("body", sa.Text(), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_internal_request_log")),
+    )
+    op.create_table(
+        "internal_response_log",
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column("request_id", sa.Integer(), nullable=False),
+        sa.Column("status_code", sa.Integer(), nullable=True),
+        sa.Column("headers", sa.Text(), nullable=True),
+        sa.Column("body", sa.Text(), nullable=True),
+        sa.Column("duration_ms", sa.Float(), nullable=False),
+        sa.Column("error", sa.Text(), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.ForeignKeyConstraint(
+            ["request_id"],
+            ["internal_request_log.id"],
+            name=op.f(
+                "fk_internal_response_log_request_id_internal_request_log"
+            ),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_internal_response_log")),
+    )
+    op.create_table(
+        "external_request_log",
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column("method", sa.String(length=10), nullable=False),
+        sa.Column("url", sa.Text(), nullable=False),
+        sa.Column("headers", sa.Text(), nullable=True),
+        sa.Column("body", sa.Text(), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_external_request_log")),
+    )
+    op.create_table(
+        "external_response_log",
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column("request_id", sa.Integer(), nullable=False),
+        sa.Column("status_code", sa.Integer(), nullable=True),
+        sa.Column("headers", sa.Text(), nullable=True),
+        sa.Column("body", sa.Text(), nullable=True),
+        sa.Column("duration_ms", sa.Float(), nullable=False),
+        sa.Column("error", sa.Text(), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.ForeignKeyConstraint(
+            ["request_id"],
+            ["external_request_log.id"],
+            name=op.f(
+                "fk_external_response_log_request_id_external_request_log"
+            ),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_external_response_log")),
+    )
+
+
+def downgrade() -> None:
+    """Downgrade schema."""
+    op.drop_table("external_response_log")
+    op.drop_table("external_request_log")
+    op.drop_table("internal_response_log")
+    op.drop_table("internal_request_log")
