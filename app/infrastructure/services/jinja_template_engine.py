@@ -10,7 +10,9 @@ from jinja2 import (
 )
 from markupsafe import Markup
 
-from app.application.ports.template_engine import Component, TemplateEngine
+from app.application.dto.shared.component import Component
+from app.application.ports.template_engine import TemplateEngine
+from app.infrastructure.types.template_dimensions import Dimensions
 
 
 class JinjaTemplateEngine(TemplateEngine):
@@ -36,9 +38,7 @@ class JinjaTemplateEngine(TemplateEngine):
             templates_dir: Directory holding the template files
              (`TEMPLATES_DIR` in .env)
         """
-        # autoescape: supplied data can never inject markup into the
-        # document. StrictUndefined: a place without data is an error,
-        # never a silently empty spot on the document.
+
         self.environment = Environment(
             loader=FileSystemLoader(templates_dir),
             autoescape=True,
@@ -46,7 +46,7 @@ class JinjaTemplateEngine(TemplateEngine):
         )
         self.templates_dir = templates_dir
         # Dimensions already read, by the file they were read from
-        self.dimensions: dict[Path, dict[str, Any]] = {}
+        self.dimensions: dict[Path, Dimensions] = {}
 
     def fill(self, component: Component, data: Any) -> str:
         """
@@ -106,12 +106,12 @@ class JinjaTemplateEngine(TemplateEngine):
             )
         )
 
-    def _dimensions(self, component: Component) -> dict[str, Any]:
+    def _dimensions(self, component: Component) -> Dimensions:
         """
         Reads the dimensions of a component.
 
         Returns:
-            dict[str, Any]: content of the dimensions file, empty if the
+            Dimensions: content of the dimensions file, empty if the
             component has none
         """
         file = (

@@ -7,8 +7,8 @@ import pytest
 
 from app.application.constants.document_formats import DocumentFormat
 from app.application.dto.invoice.invoice import InvoiceOut
+from app.application.dto.shared.component import Component
 from app.application.dto.shared.document import DocumentOut
-from app.application.ports.template_engine import Component
 from app.application.use_cases.invoices.format_invoice import FormatInvoice
 from app.domain.invoices.entities.customer import Customer
 from app.domain.invoices.entities.invoice import Invoice

@@ -1,19 +1,6 @@
-from enum import StrEnum
 from typing import Any, Protocol
 
-
-class Component(Protocol):
-    """
-    Defines what the template engine needs to know about a component:
-    one node of the tree a document is printed from.
-    """
-
-    # What is printed (e.g. `invoice`, `supplier`)
-    name: str
-    # Which of its visual variants is used
-    variant: StrEnum
-    # Labels the component prints, None if it prints none
-    labels: type[StrEnum] | None
+from app.application.dto.shared.component import Component
 
 
 class TemplateEngine(Protocol):

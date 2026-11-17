@@ -2,17 +2,8 @@
 Contract of dimensions between a parent and its children, checked for
 every design without rendering anything.
 
-Each variant of a component has `<name>/<variant>.dimensions.json`:
-
-    needs: what the component needs from its parent
-        min_width_mm: width it needs at least
-        max_height_mm: the most it can be high (missing: it flows over
-         pages)
-    slots: places the component gives to its children, by their name
-        width_mm, height_mm (height is optional)
-    rows: the slots from top to bottom; slots of one row are side by side
-    gap_mm: space between the slots of one row
-    page: paper and its margins (document only)
+Each variant of a component has `<name>/<variant>.dimensions.json`, its
+shape is `Dimensions` in `app/infrastructure/types/template_dimensions.py`.
 """
 import json
 from typing import Any
@@ -23,11 +14,12 @@ from app.application.constants.templates.design.invoice import (
     InvoiceDesign,
 )
 from app.infrastructure.config import settings
+from app.infrastructure.types.template_dimensions import Dimensions
 
 DESIGNS = [design.value for design in InvoiceDesign]
 
 
-def dimensions_of(component: Any) -> dict[str, Any]:
+def dimensions_of(component: Any) -> Dimensions:
     file = (
         settings.templates_dir
         / component.name

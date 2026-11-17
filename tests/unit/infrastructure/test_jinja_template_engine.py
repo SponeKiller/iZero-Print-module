@@ -129,6 +129,11 @@ def test_includes_the_styles_of_the_children():
         assert selector in html
 
 
+def test_header_and_footer_are_fixed_by_the_type_of_the_document():
+    assert DOCUMENT.header.variant == "none"
+    assert DOCUMENT.footer.variant == "page_numbers"
+
+
 def test_document_decides_the_page_and_places_the_content(tmp_path):
     write_templates(
         tmp_path,

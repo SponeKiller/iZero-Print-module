@@ -9,12 +9,6 @@ from app.application.constants.templates.components.customer import (
 from app.application.constants.templates.components.document import (
     DocumentComponent,
 )
-from app.application.constants.templates.components.footer import (
-    FooterComponent,
-)
-from app.application.constants.templates.components.header import (
-    HeaderComponent,
-)
 from app.application.constants.templates.components.invoice import (
     InvoiceComponent,
 )
@@ -36,12 +30,6 @@ from app.application.constants.templates.variants.customer import (
 from app.application.constants.templates.variants.document import (
     DocumentVariant,
 )
-from app.application.constants.templates.variants.footer import (
-    FooterVariant,
-)
-from app.application.constants.templates.variants.header import (
-    HeaderVariant,
-)
 from app.application.constants.templates.variants.invoice import (
     InvoiceVariant,
 )
@@ -58,15 +46,13 @@ from app.application.constants.templates.variants.supplier import (
 
 class InvoiceDesign(Enum):
     """
-    Designs of the invoice. A design chooses the page style of the
-    document, its header and footer, the layout of the invoice and the
-    visual variant of each of its children.
+    Designs of the invoice. A design chooses the type of the document
+    (which brings its header and footer), the layout of the invoice and
+    the visual variant of each of its children.
     """
 
     CLASSIC = DocumentComponent(
         variant=DocumentVariant.STANDARD,
-        header=HeaderComponent(variant=HeaderVariant.NONE),
-        footer=FooterComponent(variant=FooterVariant.PAGE_NUMBERS),
         content=InvoiceComponent(
             variant=InvoiceVariant.CLASSIC,
             supplier=SupplierComponent(

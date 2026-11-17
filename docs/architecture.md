@@ -49,7 +49,8 @@ app/
     ├── templates/         # document templates (static HTML files)
     ├── providers/         # clients of external services + HTTP audit
     ├── observability/     # redaction for the audit log
-    ├── types/             # SQLAlchemy types for value objects
+    ├── types/             # SQLAlchemy types for value objects, shape of
+    │                      # the template dimensions files
     ├── database/          # Base, engine, session
     ├── alembic/           # migrations
     ├── seed/              # default data, run after migrations

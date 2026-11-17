@@ -185,9 +185,7 @@ says what is a parent and what are its children:
 ```python
 class InvoiceDesign(Enum):
     CLASSIC = DocumentComponent(
-        variant=DocumentVariant.STANDARD,           # page style
-        header=HeaderComponent(variant=HeaderVariant.NONE),
-        footer=FooterComponent(variant=FooterVariant.PAGE_NUMBERS),
+        variant=DocumentVariant.STANDARD,           # type: page, header, footer
         content=InvoiceComponent(
             variant=InvoiceVariant.CLASSIC,         # layout of the invoice
             supplier=SupplierComponent(
@@ -206,7 +204,7 @@ class InvoiceDesign(Enum):
 
 | Entity | Component | Children |
 |--------|----------------|----------|
-| - | `DocumentComponent` | `header`, `footer`, `content` |
+| - | `DocumentComponent` | `content`; `header`, `footer` fixed by its variant |
 | - | `HeaderComponent` | - |
 | - | `FooterComponent` | - |
 | `Invoice` | `InvoiceComponent` | `supplier`, `customer`, `items`, `payments` |
@@ -227,11 +225,13 @@ that does not exist.
 
 `DocumentComponent` is the parent of every printed document. It has no
 entity in the domain - it exists only for printing. Its variant is the
-page style (paper, margins, fonts, background), its children are the
-header and the footer repeated on every page and the content (the
-invoice). The application layer only says which page style, header and
-footer a design uses; the concrete values (millimetres, font names,
-colours) are in the template files. The document gets its own data,
+type of the document: its page style (paper, margins, fonts,
+background) and its header and footer. The header and the footer are
+components of their own (own folder, variants, labels and templates),
+but a design never chooses them - they are bound to the type of the
+document in `DocumentComponent.HEADERS` and `.FOOTERS`, and the design
+chooses only the type and the content. The concrete values
+(millimetres, font names, colours) are in the template files. The document gets its own data,
 `DocumentOut` (`title`, `content`), built by the use case.
 
 `PrintInvoice` always uses `InvoiceDesign.CLASSIC` - choosing a design by
@@ -353,6 +353,9 @@ into `<name>/<variant>.dimensions.json`:
   "gap_mm": 10
 }
 ```
+
+The shape of the file is described by `Dimensions` (with `Needs`,
+`Slot` and `Page`) in `app/infrastructure/types/template_dimensions.py`.
 
 The numbers are written once: the styles take the page size, the margins,
 the widths of the slots and the gap from `dimensions`

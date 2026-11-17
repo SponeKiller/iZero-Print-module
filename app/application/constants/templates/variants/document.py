@@ -2,6 +2,9 @@ from enum import StrEnum
 
 
 class DocumentVariant(StrEnum):
-    """Page styles of a document: paper, margins, fonts, background."""
+    """
+    Types of a document: page style (paper, margins, fonts, background)
+    and the header and footer that belong to it.
+    """
 
     STANDARD = "standard"
