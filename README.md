@@ -5,15 +5,19 @@ service validates it, fills the document template and returns a PDF. The
 first supported document is the invoice. The service has no business logic
 of its own and stores no documents.
 
-- Design of the module: [docs/print-module.md](docs/print-module.md)
-- Rules of the service skeleton: [docs/architecture.md](docs/architecture.md)
+- How the project works: [docs/overview.md](docs/overview.md)
+- Adding another document: [docs/adding-a-document.md](docs/adding-a-document.md)
+- Design of the module: [Print Module - Technical documentation](https://app.notion.com/p/41b249716045817088bcf38846ee9f3e) (Notion)
+- Rules of the service skeleton: [architecture](docs/architecture.md),
+  [naming conventions](docs/naming-conventions.md), [API](docs/api.md),
+  [errors and responses](docs/errors-and-responses.md),
+  [observability](docs/observability.md)
 
 ## API
 
 `POST /api/invoices/print` - JSON with the invoice data in, PDF out.
-Invalid data ends with `422` and the first validation problem. See
-[docs/print-module.md](docs/print-module.md#6-api) for the request and the
-responses, or Swagger at `http://127.0.0.1:8000/docs`.
+Invalid data ends with `422` and the first validation problem. See section 6 of the
+[technical documentation](https://app.notion.com/p/41b249716045817088bcf38846ee9f3e) for the request and the responses, or Swagger at `http://127.0.0.1:8000/docs`.
 
 The service has **no authentication** - it must only be reachable from the
 internal network (BR-7).
@@ -49,7 +53,8 @@ playwright install --only-shell chromium
 ```
 
 Without it the service starts, validation works, but printing ends with
-`SYSTEM_INTERNAL_FAIL`. The Docker image has it.
+`SYSTEM_INTERNAL_FAIL`, and the tests that print a real PDF fail. The
+Docker image has it.
 
 ## Tests and lint
 
@@ -58,24 +63,48 @@ pytest
 ruff check .
 ```
 
-Tests need no database. Tests that render a real PDF are skipped where
-Chromium is not installed; they can also be run in the image:
+Tests need no database, but they need Chromium (see above) - tests that
+print a real PDF fail without it. They can also be run in the image:
 
 ```powershell
-docker run --rm --user root -v "${PWD}:/work:ro" -w /work --entrypoint sh izero-print-module -c "pip install -q pytest==9.2.0 httpx==0.28.1 && pytest -p no:cacheprovider"
+docker run --rm --user root -v "${PWD}:/work:ro" -w /work --entrypoint sh izero-print-module -c "pip install -q -r requirements-dev.txt && pytest -p no:cacheprovider"
+```
+
+### Visual tests
+
+`tests/visual/<document>/` holds one test file per printed PDF. Every
+page is compared pixel by pixel with its approved image, named after the
+test file (`tests/visual/compare_pdf.py`):
+
+```
+tests/visual/invoice/
+├── test_complete_invoice.py
+└── images/<platform>/
+    ├── test_complete_invoice.png                 one page
+    └── test_invoice_over_several_pages_page_1.png  more pages: _page_<n>
+```
+
+A failed test writes the rendered pages and diff masks to
+`tests/visual/<document>/failed/<platform>/`.
+
+After an intended change of the look, approve the new images and commit
+them:
+
+```powershell
+$env:UPDATE_VISUAL = "1"; pytest tests/visual; Remove-Item Env:UPDATE_VISUAL
+```
+
+Fonts render differently on every platform, so every platform has its
+own folder of images (`win32`, `linux`). CI compares the `linux` ones;
+create them in the image:
+
+```powershell
+docker run --rm --user root -e UPDATE_VISUAL=1 -v "${PWD}:/work" -w /work --entrypoint sh izero-print-module -c "pip install -q -r requirements-dev.txt && pytest -p no:cacheprovider tests/visual"
 ```
 
 CI runs ruff and the single-Alembic-head check (`lint.yml`) and the tests
 (`test.yml`) on every pull request to `main`.
 
-## Adding another document type
+## Adding another document
 
-1. Entities with `create` + `_validate` and value objects in
-   `app/domain/<context>/`
-2. Template port in `app/application/ports/` and DTOs + use case next to
-   `PrintInvoice`
-3. Components, variants, labels and the design in
-   `app/application/constants/templates/`, the template files in the
-   templates directory (`TEMPLATES_DIR`) and the adapter in
-   `app/infrastructure/services/`
-4. Schemas, endpoint and error mapping in `app/infrastructure/api/`
+See [docs/adding-a-document.md](docs/adding-a-document.md).

@@ -12,3 +12,4 @@ os.environ.setdefault("CORS_ALLOW_ORIGINS", "")
 os.environ.setdefault("CORS_ALLOW_METHODS", "")
 os.environ.setdefault("CORS_ALLOW_HEADERS", "")
 os.environ["SENTRY_DSN"] = ""
+

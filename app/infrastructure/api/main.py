@@ -36,11 +36,6 @@ app.add_middleware(
     allow_headers=settings.cors_allow_headers,
 )
 
-##HTTP
-# Starlette runs middleware in the reverse order they are added.
-# HttpAuditMiddleware must be added last of all, making it the outermost
-# middleware, so it captures every incoming request/response exactly as the
-# client sent/received it, before/after any other middleware touches it.
 app.add_middleware(HttpAuditMiddleware)
 
 
@@ -53,8 +48,6 @@ app.include_router(router)
 async def application_error_handler(request: Request, exc: ApplicationError):
     message_id, status_code = APPLICATION_ERRORS[type(exc)]
 
-    # Invalid data (BR-2): return the validation problem to the caller.
-    # A list, to keep one format with request_validation_error_handler.
     data = None
     if isinstance(exc, InvalidDocumentDataError):
         data = [ValidationProblemSchemaOut.model_validate(exc.problem)]
@@ -72,13 +65,8 @@ async def request_validation_error_handler(
     request: Request,
     exc: RequestValidationError,
 ):
-    # A body that is not valid JSON, misses a part of the invoice or holds
-    # a value of a wrong data type never reaches the use case. Answer in
-    # the same shape as the domain validation, so the caller handles one
-    # format of problems only.
     problems = []
     for error in exc.errors():
-        # ("body", "items", 0, "quantity") -> "items[0].quantity"
         field = ""
         for part in error["loc"][1:]:
             if isinstance(part, int):

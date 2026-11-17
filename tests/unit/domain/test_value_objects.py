@@ -8,7 +8,8 @@ from app.domain.shared.value_objects.address import Address
 from app.domain.shared.value_objects.company_id import CompanyId
 from app.domain.shared.value_objects.iban import Iban
 from app.domain.shared.value_objects.vat_id import VatId
-from tests.support import VALID_IBAN
+
+VALID_IBAN = "CZ6508000000192000145399"
 
 VALID_ADDRESS = {
     "street": "Dlouhá 12",

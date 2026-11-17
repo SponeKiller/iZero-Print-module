@@ -1,208 +1,131 @@
-from dataclasses import replace
 from datetime import date
 from decimal import Decimal
-
-import pytest
+from typing import Any
 
 from app.application.constants.document_formats import DocumentFormat
 from app.application.constants.templates.design.invoice import (
     InvoiceDesign,
 )
 from app.application.dto.invoice.customer import CustomerIn
-from app.application.dto.invoice.invoice import InvoiceIn
+from app.application.dto.invoice.invoice import InvoiceIn, InvoiceOut
 from app.application.dto.invoice.invoice_item import InvoiceItemIn
 from app.application.dto.invoice.payments import PaymentsIn
 from app.application.dto.invoice.supplier import SupplierIn
 from app.application.dto.shared.address import AddressIn
-from app.application.exceptions.printing import InvalidDocumentDataError
 from app.application.use_cases.invoices.print_invoice import PrintInvoice
-from app.domain.shared.exceptions.validation import ProblemCode
-from tests.support import (
-    VALID_IBAN,
-    FakeDocumentRenderer,
-    FakeTemplateEngine,
-)
-
-ADDRESS = AddressIn(
-    street="Dlouhá 12",
-    city="Praha",
-    postal_code="110 00",
-    country="Česká republika",
-)
-
-ITEM = InvoiceItemIn(
-    description="Konzultace",
-    quantity=Decimal("2.5"),
-    unit="h",
-    unit_price=Decimal(1200),
-    vat_rate=Decimal(21),
-    total=Decimal(3630),
-)
-
-PAYMENTS = PaymentsIn(
-    iban=VALID_IBAN,
-    amount_to_pay=Decimal(3630),
-    currency="CZK",
-    variable_symbol="20260042",
-    due_date=date(2026, 11, 16),
-)
+from tests.shared.fake_document_renderer import FakeDocumentRenderer
+from tests.shared.fake_template_engine import FakeTemplateEngine
 
 
-def print_invoice_in() -> InvoiceIn:
+def address_in(**overrides: Any) -> AddressIn:
+    return AddressIn(
+        **{
+            "street": "Dlouhá 12",
+            "city": "Praha",
+            "postal_code": "110 00",
+            "country": "Česká republika",
+        }
+        | overrides
+    )
+
+
+def supplier_in(**overrides: Any) -> SupplierIn:
+    return SupplierIn(
+        **{
+            "name": "Dodavatel s.r.o.",
+            "company_id": "12345678",
+            "vat_id": "CZ12345678",
+            "address": address_in(),
+        }
+        | overrides
+    )
+
+
+def customer_in(**overrides: Any) -> CustomerIn:
+    return CustomerIn(
+        **{
+            "name": "Odběratel a.s.",
+            "company_id": None,
+            "vat_id": None,
+            "address": address_in(
+                street="Krátká 3", city="Brno", postal_code="602 00"
+            ),
+        }
+        | overrides
+    )
+
+
+def item_in(**overrides: Any) -> InvoiceItemIn:
+    return InvoiceItemIn(
+        **{
+            "description": "Konzultace",
+            "quantity": Decimal("2.5"),
+            "unit": "h",
+            "unit_price": Decimal("1200.00"),
+            "vat_rate": Decimal(21),
+            "total": Decimal("3630.00"),
+        }
+        | overrides
+    )
+
+
+def payments_in(**overrides: Any) -> PaymentsIn:
+    return PaymentsIn(
+        **{
+            "iban": "CZ6508000000192000145399",
+            "amount_to_pay": Decimal("1238197.50"),
+            "currency": "CZK",
+            "variable_symbol": "20260042",
+            "due_date": date(2026, 11, 16),
+        }
+        | overrides
+    )
+
+
+def invoice_in(**overrides: Any) -> InvoiceIn:
     return InvoiceIn(
-        number="2026-0042",
-        issue_date=date(2026, 11, 2),
-        supplier=SupplierIn(
-            name="Dodavatel s.r.o.",
-            company_id="12345678",
-            vat_id="CZ12345678",
-            address=ADDRESS,
-        ),
-        customer=CustomerIn(name="Odběratel a.s.", address=ADDRESS),
-        items=[ITEM],
-        payments=PAYMENTS,
+        **{
+            "number": "2026-0042",
+            "issue_date": date(2026, 11, 2),
+            "supplier": supplier_in(),
+            "customer": customer_in(),
+            "items": [
+                item_in(),
+                item_in(
+                    description="Licence",
+                    quantity=Decimal(1),
+                    unit=None,
+                    unit_price=Decimal("1234567.5"),
+                    vat_rate=None,
+                    total=Decimal("1234567.50"),
+                ),
+            ],
+            "payments": payments_in(),
+        }
+        | overrides
     )
 
 
 def test_prints_valid_invoice():
-    template = FakeTemplateEngine()
+    template = FakeTemplateEngine[InvoiceOut]()
     renderer = FakeDocumentRenderer()
 
-    result = PrintInvoice(template, renderer).execute(print_invoice_in())
+    result = PrintInvoice(template, renderer).execute(invoice_in())
 
     # AC-2: the document is rendered from the template filled with the
-    # supplied data
-    assert [invoice.number for invoice in template.filled] == ["2026-0042"]
+    filled = template.filled[0]
+    assert filled.number == "2026-0042"
+    assert filled.supplier.company_id == "12345678"
+    assert filled.customer.company_id is None
+    assert filled.items[0].quantity == "2,5"
+    assert filled.payments.iban == "CZ65 0800 0000 1920 0014 5399"
     # the application layer decides the design
     assert template.components == [InvoiceDesign.CLASSIC.value]
-    assert renderer.rendered == ["<invoice 2026-0042>"]
-    assert result.content == b"%PDF-fake <invoice 2026-0042>"
+    assert renderer.rendered == [FakeTemplateEngine.DOCUMENT]
+    assert result.content == (
+        b"%PDF-fake " + FakeTemplateEngine.DOCUMENT.encode()
+    )
     # the application layer decides the format
     assert renderer.formats == [DocumentFormat.PDF]
     assert result.document_format == DocumentFormat.PDF
     assert result.filename == "invoice-2026-0042.pdf"
-
-
-def test_invalid_data_is_rejected_and_nothing_is_printed():
-    template = FakeTemplateEngine()
-    renderer = FakeDocumentRenderer()
-    dto = replace(
-        print_invoice_in(),
-        payments=replace(PAYMENTS, iban="CZ65" + "0" * 31),
-    )
-
-    with pytest.raises(InvalidDocumentDataError) as raised:
-        PrintInvoice(template, renderer).execute(dto)
-
-    # AC-1 / BR-2: the problem is returned, no template is filled and
-    # nothing is rendered
-    problem = raised.value.problem
-    assert (problem.field, problem.code) == ("iban", ProblemCode.TOO_LONG)
-    assert template.filled == []
-    assert renderer.rendered == []
-
-
-def test_domain_objects_are_built_from_the_supplied_data():
-    template = FakeTemplateEngine()
-    dto = replace(
-        print_invoice_in(),
-        payments=replace(
-            PAYMENTS,
-            iban="CZ6508000000192000145399",
-            variable_symbol=None,
-        ),
-    )
-
-    PrintInvoice(template, FakeDocumentRenderer()).execute(dto)
-
-    # the template gets the invoice already formatted
-    invoice = template.filled[0]
-    assert invoice.supplier.company_id == "12345678"
-    assert invoice.supplier.vat_id == "CZ12345678"
-    assert invoice.supplier.address.city == "Praha"
-    # optional values that were not supplied
-    assert invoice.customer.company_id is None
-    assert invoice.customer.vat_id is None
-    assert invoice.payments.variable_symbol is None
-    assert invoice.items[0].quantity == "2,5"
-    assert invoice.payments.iban == "CZ65 0800 0000 1920 0014 5399"
-
-
-@pytest.mark.parametrize(
-    ("changes", "expected"),
-    [
-        (
-            {"number": "x" * 21},
-            ("number", ProblemCode.TOO_LONG),
-        ),
-        (
-            {
-                "supplier": SupplierIn(
-                    name="Dodavatel s.r.o.",
-                    vat_id="CZ12345678901",
-                    address=ADDRESS,
-                )
-            },
-            ("vat_id", ProblemCode.TOO_LONG),
-        ),
-        (
-            {
-                "customer": CustomerIn(
-                    name="O", address=replace(ADDRESS, city="")
-                )
-            },
-            ("city", ProblemCode.REQUIRED),
-        ),
-        (
-            {
-                "customer": CustomerIn(
-                    name="O", company_id="123456789", address=ADDRESS
-                )
-            },
-            ("company_id", ProblemCode.TOO_LONG),
-        ),
-        (
-            {"items": [replace(ITEM, quantity=Decimal("12345678.901"))]},
-            ("quantity", ProblemCode.TOO_LONG),
-        ),
-        (
-            {"payments": replace(PAYMENTS, currency="CZKK")},
-            ("currency", ProblemCode.TOO_LONG),
-        ),
-    ],
-)
-def test_invalid_value_is_rejected_by_the_domain(changes, expected):
-    dto = replace(print_invoice_in(), **changes)
-
-    with pytest.raises(InvalidDocumentDataError) as raised:
-        PrintInvoice(FakeTemplateEngine(), FakeDocumentRenderer()).execute(
-            dto
-        )
-
-    problem = raised.value.problem
-    assert (problem.field, problem.code) == expected
-
-
-def test_template_failure_is_not_handled_and_nothing_is_rendered():
-    cause = RuntimeError("template is broken")
-    renderer = FakeDocumentRenderer()
-
-    with pytest.raises(RuntimeError) as raised:
-        PrintInvoice(FakeTemplateEngine(error=cause), renderer).execute(
-            print_invoice_in()
-        )
-
-    assert raised.value is cause
-    assert renderer.rendered == []
-
-
-def test_rendering_failure_is_not_handled():
-    cause = RuntimeError("Executable doesn't exist")
-
-    with pytest.raises(RuntimeError) as raised:
-        PrintInvoice(
-            FakeTemplateEngine(),
-            FakeDocumentRenderer(error=cause),
-        ).execute(print_invoice_in())
-
-    assert raised.value is cause

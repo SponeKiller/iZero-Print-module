@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,14 +11,55 @@ from app.infrastructure.api.dependencies.printing import (
 from app.infrastructure.api.main import app
 from app.infrastructure.api.middleware import http_audit
 from app.infrastructure.api.schemas.message_id import MessageId
-from tests.support import (
-    FakeDocumentRenderer,
-    FakeTemplateEngine,
-    invoice_json,
-    requires_chromium,
-)
+from tests.shared.fake_document_renderer import FakeDocumentRenderer
+from tests.shared.fake_template_engine import FakeTemplateEngine
 
 URL = "/api/invoices/print"
+
+
+def invoice_json() -> dict[str, Any]:
+    """Valid invoice data as the JSON body of the print endpoint."""
+    return {
+        "number": "2026-0042",
+        "issue_date": "2026-11-02",
+        "supplier": {
+            "name": "Dodavatel s.r.o.",
+            "company_id": "12345678",
+            "vat_id": "CZ12345678",
+            "address": {
+                "street": "Dlouhá 12",
+                "city": "Praha",
+                "postal_code": "110 00",
+                "country": "Česká republika",
+            },
+        },
+        "customer": {
+            "name": "Odběratel a.s.",
+            "address": {
+                "street": "Krátká 3",
+                "city": "Brno",
+                "postal_code": "602 00",
+                "country": "Česká republika",
+            },
+        },
+        "items": [
+            {
+                "description": "Konzultace",
+                "quantity": "2.5",
+                "unit": "h",
+                "unit_price": 1200,
+                "vat_rate": 21,
+                "total": "3630.00",
+            },
+        ],
+        "payments": {
+            "iban": "CZ6508000000192000145399",
+            "amount_to_pay": "3630.00",
+            "currency": "CZK",
+            "variable_symbol": "20260042",
+            "due_date": "2026-11-16",
+        },
+    }
 
 
 @contextmanager
@@ -217,7 +259,6 @@ def test_rendering_failure_is_an_internal_error(client):
     }
 
 
-@requires_chromium
 def test_end_to_end_with_the_real_renderer():
     with TestClient(app) as client:
         response = client.post(URL, json=invoice_json())

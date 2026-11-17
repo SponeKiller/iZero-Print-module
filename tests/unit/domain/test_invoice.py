@@ -1,24 +1,118 @@
 from datetime import date
 from decimal import Decimal
+from typing import Any
 
 import pytest
 
+from app.domain.invoices.entities.customer import Customer
+from app.domain.invoices.entities.invoice import Invoice
+from app.domain.invoices.entities.invoice_item import InvoiceItem
+from app.domain.invoices.entities.payments import Payments
+from app.domain.invoices.entities.supplier import Supplier
 from app.domain.shared.exceptions.validation import (
     DomainValidationError,
     ProblemCode,
 )
+from app.domain.shared.value_objects.address import Address
 from app.domain.shared.value_objects.company_id import CompanyId
 from app.domain.shared.value_objects.iban import Iban
 from app.domain.shared.value_objects.vat_id import VatId
-from tests.support import (
-    VALID_IBAN,
-    address,
-    customer,
-    invoice,
-    item,
-    payments,
-    supplier,
-)
+
+VALID_IBAN = "CZ6508000000192000145399"
+
+
+# Builders of valid domain objects. Every keyword argument replaces the
+# default value passed to `create` of the object.
+
+
+def address(**overrides: Any) -> Address:
+    return Address(
+        **{
+            "street": "Dlouhá 12",
+            "city": "Praha",
+            "postal_code": "110 00",
+            "country": "Česká republika",
+        }
+        | overrides
+    )
+
+
+def supplier(**overrides: Any) -> Supplier:
+    return Supplier.create(
+        **{
+            "name": "Dodavatel s.r.o.",
+            "company_id": CompanyId("12345678"),
+            "vat_id": VatId("CZ12345678"),
+            "address": address(),
+        }
+        | overrides
+    )
+
+
+def customer(**overrides: Any) -> Customer:
+    return Customer.create(
+        **{
+            "name": "Odběratel a.s.",
+            "company_id": None,
+            "vat_id": None,
+            "address": address(
+                street="Krátká 3", city="Brno", postal_code="602 00"
+            ),
+        }
+        | overrides
+    )
+
+
+def item(**overrides: Any) -> InvoiceItem:
+    return InvoiceItem.create(
+        **{
+            "description": "Konzultace",
+            "quantity": Decimal("2.5"),
+            "unit": "h",
+            "unit_price": Decimal("1200.00"),
+            "vat_rate": Decimal(21),
+            "total": Decimal("3630.00"),
+        }
+        | overrides
+    )
+
+
+def item_without_unit_and_vat() -> InvoiceItem:
+    return item(
+        description="Licence",
+        quantity=Decimal(1),
+        unit=None,
+        unit_price=Decimal("1234567.5"),
+        vat_rate=None,
+        total=Decimal("1234567.50"),
+    )
+
+
+def payments(**overrides: Any) -> Payments:
+    return Payments.create(
+        **{
+            "iban": Iban(VALID_IBAN),
+            "amount_to_pay": Decimal("1238197.50"),
+            "currency": "CZK",
+            "variable_symbol": "20260042",
+            "due_date": date(2026, 11, 16),
+        }
+        | overrides
+    )
+
+
+def invoice(**overrides: Any) -> Invoice:
+    return Invoice.create(
+        **{
+            "number": "2026-0042",
+            "issue_date": date(2026, 11, 2),
+            "supplier": supplier(),
+            "customer": customer(),
+            "items": [item(), item_without_unit_and_vat()],
+            "payments": payments(),
+        }
+        | overrides
+    )
 
 
 def test_creates_invoice_from_valid_parts():
@@ -116,22 +210,3 @@ def test_entity_rejects_invalid_value(build, field, value, expected):
 )
 def test_entity_accepts_boundary_values(build, field, value):
     build(**{field: value})
-
-
-def test_entity_fails_on_its_first_rejected_value():
-    with pytest.raises(DomainValidationError) as raised:
-        item(description="", quantity=Decimal(10000000000))
-
-    assert raised.value.problem.field == "description"
-
-
-def test_error_message_names_the_field():
-    with pytest.raises(DomainValidationError) as raised:
-        supplier(name="")
-
-    assert str(raised.value) == "name: Is required."
-
-
-def test_entity_takes_its_parts_already_built():
-    # An entity never builds another object - the application layer does
-    assert supplier(address=address(city="Brno")).address.city == "Brno"

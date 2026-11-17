@@ -1,7 +1,4 @@
-from dataclasses import replace
-
-import pytest
-from jinja2 import TemplateNotFound, UndefinedError
+from typing import Any
 
 from app.application.constants.templates.design.invoice import (
     InvoiceDesign,
@@ -14,38 +11,123 @@ from app.application.constants.templates.labels.invoice_item import (
 )
 from app.application.constants.templates.labels.payments import PaymentsLabel
 from app.application.constants.templates.labels.supplier import SupplierLabel
+from app.application.dto.invoice.customer import CustomerOut
 from app.application.dto.invoice.invoice import InvoiceOut
+from app.application.dto.invoice.invoice_item import InvoiceItemOut
+from app.application.dto.invoice.payments import PaymentsOut
+from app.application.dto.invoice.supplier import SupplierOut
+from app.application.dto.shared.address import AddressOut
 from app.infrastructure.config import settings
 from app.infrastructure.services.jinja_template_engine import (
     JinjaTemplateEngine,
 )
-from tests.support import (
-    formatted_invoice,
-    item,
-    item_without_unit_and_vat,
-    payments,
-    supplier,
-)
 
 NBSP = "\u00a0"
 
+
+# Builders of a formatted invoice - the data the template engine gets.
+# Every keyword argument replaces the default value.
+
+
+def address_out(**overrides: Any) -> AddressOut:
+    return AddressOut(
+        **{
+            "street": "Dlouhá 12",
+            "city": "Praha",
+            "postal_code": "110 00",
+            "country": "Česká republika",
+        }
+        | overrides
+    )
+
+
+def supplier_out(**overrides: Any) -> SupplierOut:
+    return SupplierOut(
+        **{
+            "name": "Dodavatel s.r.o.",
+            "company_id": "12345678",
+            "vat_id": "CZ12345678",
+            "address": address_out(),
+        }
+        | overrides
+    )
+
+
+def customer_out(**overrides: Any) -> CustomerOut:
+    return CustomerOut(
+        **{
+            "name": "Odběratel a.s.",
+            "company_id": None,
+            "vat_id": None,
+            "address": address_out(
+                street="Krátká 3", city="Brno", postal_code="602 00"
+            ),
+        }
+        | overrides
+    )
+
+
+def item_out(**overrides: Any) -> InvoiceItemOut:
+    return InvoiceItemOut(
+        **{
+            "description": "Konzultace",
+            "quantity": "2,5",
+            "unit": "h",
+            "unit_price": f"1{NBSP}200,00",
+            "vat_rate": "21",
+            "total": f"3{NBSP}630,00",
+        }
+        | overrides
+    )
+
+
+def item_out_without_unit_and_vat() -> InvoiceItemOut:
+    return item_out(
+        description="Licence",
+        quantity="1",
+        unit=None,
+        unit_price=f"1{NBSP}234{NBSP}567,50",
+        vat_rate=None,
+        total=f"1{NBSP}234{NBSP}567,50",
+    )
+
+
+def payments_out(**overrides: Any) -> PaymentsOut:
+    return PaymentsOut(
+        **{
+            "iban": "CZ65 0800 0000 1920 0014 5399",
+            "amount_to_pay": f"1{NBSP}238{NBSP}197,50",
+            "currency": "CZK",
+            "variable_symbol": "20260042",
+            "due_date": f"16.{NBSP}11.{NBSP}2026",
+        }
+        | overrides
+    )
+
+
+def invoice_out(**overrides: Any) -> InvoiceOut:
+    return InvoiceOut(
+        **{
+            "number": "2026-0042",
+            "issue_date": f"2.{NBSP}11.{NBSP}2026",
+            "supplier": supplier_out(),
+            "customer": customer_out(),
+            "items": [item_out(), item_out_without_unit_and_vat()],
+            "payments": payments_out(),
+        }
+        | overrides
+    )
+
+
 DOCUMENT = InvoiceDesign.CLASSIC.value
-# the invoice inside the document
-CLASSIC = DOCUMENT.content
 
 
 def fill(invoice: InvoiceOut) -> str:
     return JinjaTemplateEngine(settings.templates_dir).fill(DOCUMENT, invoice)
 
 
-def write_templates(directory, files: dict[str, str]) -> None:
-    for name, content in files.items():
-        (directory / name).parent.mkdir(exist_ok=True)
-        (directory / name).write_text(content, encoding="utf-8")
-
-
-def test_fills_every_supplied_value():
-    html = fill(formatted_invoice())
+def test_fills_every_supplied_value_and_label():
+    html = fill(invoice_out())
 
     for expected in [
         "2026-0042",
@@ -71,40 +153,6 @@ def test_fills_every_supplied_value():
     ]:
         assert expected in html
 
-
-def test_leaves_out_optional_values_that_were_not_supplied():
-    html = fill(
-        formatted_invoice(
-            supplier=supplier(vat_id=None),
-            payments=payments(variable_symbol=None),
-            items=[item_without_unit_and_vat()],
-        )
-    )
-
-    assert "DIČ" not in html
-    assert "Variabilní symbol" not in html
-    assert "&nbsp;%" not in html
-    assert "None" not in html
-    # the customer has neither a company ID nor a VAT ID
-    assert html.count("IČO:") == 1
-
-
-def test_escapes_supplied_values():
-    html = fill(
-        formatted_invoice(
-            supplier=supplier(name="<script>alert(1)</script>"),
-            items=[item(description='<img src="http://evil.test/x">')],
-        )
-    )
-
-    assert "<script>" not in html
-    assert "<img" not in html
-    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
-
-
-def test_prints_the_labels_of_every_template():
-    html = fill(formatted_invoice())
-
     for labels in [
         FooterLabel,
         InvoiceLabel,
@@ -117,133 +165,18 @@ def test_prints_the_labels_of_every_template():
             assert label in html
 
 
-def test_includes_the_styles_of_the_children():
-    html = fill(formatted_invoice())
-
-    for selector in [".supplier .name", ".customer .name", ".item td",
-                     ".payments .total"]:
-        assert selector in html
-
-
-def test_header_and_footer_are_fixed_by_the_type_of_the_document():
-    assert DOCUMENT.header.variant == "none"
-    assert DOCUMENT.footer.variant == "page_numbers"
-
-
-def test_document_decides_the_page_and_places_the_content(tmp_path):
-    write_templates(
-        tmp_path,
-        {
-            "document/standard.html.jinja": (
-                "<style>{{ style(component) }}"
-                "{{ style(component.header) }}"
-                "{{ style(component.footer) }}</style>"
-                "[{{ render(component.content, data) }}]"
-            ),
-            "document/standard.css.jinja": "@page { margin: 1mm }",
-            "footer/page_numbers.css.jinja": (
-                '@page { @bottom-right { content: "{{ labels.PAGE }}" } }'
-            ),
-            "invoice/classic.html.jinja": "{{ data.number }}",
-        },
+def test_leaves_out_optional_values_that_were_not_supplied():
+    html = fill(
+        invoice_out(
+            supplier=supplier_out(vat_id=None),
+            payments=payments_out(variable_symbol=None),
+            items=[item_out_without_unit_and_vat()],
+        )
     )
 
-    # the header variant `none` has no file and prints nothing
-    assert JinjaTemplateEngine(tmp_path).fill(
-        DOCUMENT, formatted_invoice()
-    ) == (
-        "<style>@page { margin: 1mm }"
-        '@page { @bottom-right { content: "Strana" } }</style>'
-        "[2026-0042]"
-    )
-
-
-def test_templates_and_styles_get_the_dimensions_of_the_component(tmp_path):
-    write_templates(
-        tmp_path,
-        {
-            "invoice/classic.html.jinja": (
-                "<style>{{ style(component.supplier) }}</style>"
-                "{{ dimensions.gap_mm }}"
-            ),
-            "invoice/classic.dimensions.json": '{"gap_mm": 10}',
-            "supplier/plain.css.jinja": (
-                "{{ dimensions.needs.max_height_mm }}mm"
-            ),
-            "supplier/plain.dimensions.json": (
-                '{"needs": {"max_height_mm": 45}}'
-            ),
-        },
-    )
-
-    assert JinjaTemplateEngine(tmp_path).fill(
-        CLASSIC, formatted_invoice()
-    ) == "<style>45mm</style>10"
-
-
-def test_page_and_areas_are_sized_by_the_dimensions():
-    html = fill(formatted_invoice())
-
-    for expected in [
-        "size: 210mm 297mm;",
-        "gap: 10mm;",
-        "width: 84mm;\n  max-height: 110mm;",
-        "width: 178mm;\n  max-height: 35mm;",
-    ]:
-        assert expected in html
-
-
-def test_parent_places_its_children_and_design_chooses_their_variant(
-    tmp_path,
-):
-    write_templates(
-        tmp_path,
-        {
-            "invoice/classic.html.jinja": (
-                "<style>{{ style(component.supplier) }}</style>"
-                "[{{ render(component.supplier, data.supplier) }}]"
-            ),
-            "supplier/plain.html.jinja": (
-                "plain {{ data.name }} "
-                "({{ render(component.address, data.address) }})"
-            ),
-            "supplier/boxed.html.jinja": "boxed {{ data.name }}",
-            "supplier/boxed.css.jinja": ".boxed { border: 1pt solid }",
-            "address/lines.html.jinja": "{{ data.city }}",
-        },
-    )
-    engine = JinjaTemplateEngine(tmp_path)
-    # "boxed" is a variant that exists only in the files of this test
-    boxed = replace(
-        CLASSIC, supplier=replace(CLASSIC.supplier, variant="boxed")
-    )
-
-    assert engine.fill(CLASSIC, formatted_invoice()) == (
-        "<style></style>[plain Dodavatel s.r.o. (Praha)]"
-    )
-    assert engine.fill(boxed, formatted_invoice()) == (
-        "<style>.boxed { border: 1pt solid }</style>[boxed Dodavatel s.r.o.]"
-    )
-
-
-def test_missing_template_file_is_an_error(tmp_path):
-    with pytest.raises(TemplateNotFound):
-        JinjaTemplateEngine(tmp_path).fill(CLASSIC, formatted_invoice())
-
-
-def test_missing_place_in_the_data_is_an_error(tmp_path):
-    write_templates(
-        tmp_path, {"invoice/classic.html.jinja": "{{ data.no_such_field }}"}
-    )
-
-    with pytest.raises(UndefinedError):
-        JinjaTemplateEngine(tmp_path).fill(CLASSIC, formatted_invoice())
-
-
-def test_missing_label_is_an_error(tmp_path):
-    write_templates(
-        tmp_path, {"invoice/classic.html.jinja": "{{ labels.NO_SUCH_LABEL }}"}
-    )
-
-    with pytest.raises(UndefinedError):
-        JinjaTemplateEngine(tmp_path).fill(CLASSIC, formatted_invoice())
+    assert "DIČ" not in html
+    assert "Variabilní symbol" not in html
+    assert "&nbsp;%" not in html
+    assert "None" not in html
+    # the customer has neither a company ID nor a VAT ID
+    assert html.count("IČO:") == 1

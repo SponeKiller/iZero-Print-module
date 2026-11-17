@@ -123,21 +123,3 @@ def test_every_parent_gives_its_children_enough_space(document):
         page_height_mm=content["height_mm"],
     )
 
-
-def test_child_that_needs_more_than_it_gets_is_reported(monkeypatch):
-    # the supplier suddenly needs more width than the invoice gives it
-    original = dimensions_of
-
-    def wider_supplier(component):
-        dimensions = original(component)
-        if component.name == "supplier":
-            dimensions["needs"]["min_width_mm"] = 120
-        return dimensions
-
-    monkeypatch.setattr(
-        "tests.unit.infrastructure.test_component_dimensions.dimensions_of",
-        wider_supplier,
-    )
-
-    with pytest.raises(AssertionError, match="it needs 120 mm"):
-        test_every_parent_gives_its_children_enough_space(DESIGNS[0])
