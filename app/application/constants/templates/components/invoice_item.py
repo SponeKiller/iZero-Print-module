@@ -12,10 +12,11 @@ from app.application.constants.templates.variants.invoice_item import (
 @dataclass(frozen=True)
 class InvoiceItemComponent:
     """
-    Component printing one invoice item.
+    Component printing every invoice item - it gets the list of the
+    items and prints them as a whole (e.g. a table with its header).
 
     Attributes:
-        variant: Visual variant of the item.
+        variant: Visual variant of the items.
     """
 
     name: ClassVar[str] = "invoice_item"

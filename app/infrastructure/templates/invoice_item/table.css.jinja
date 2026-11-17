@@ -1,0 +1,28 @@
+.items {
+  width: 100%;
+  border-collapse: collapse;
+}
+.items th {
+  padding: 2mm 2mm;
+  border-bottom: 1pt solid #111827;
+  font-size: 7.5pt;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-align: left;
+  color: #4b5563;
+}
+.items th.num { text-align: right; }
+
+.item { break-inside: avoid; }
+.item td {
+  padding: 2mm 2mm;
+  border-bottom: 0.5pt solid #d1d5db;
+  vertical-align: top;
+}
+.item .num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.item .description { overflow-wrap: anywhere; }

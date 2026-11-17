@@ -41,11 +41,15 @@ alembic upgrade head
 uvicorn app.infrastructure.api.main:app --reload
 ```
 
-PDF rendering uses WeasyPrint, which needs the native Pango libraries.
-The Docker image has them. On Windows without them the service starts,
-validation works, but printing ends with `PRINT_RENDERING_FAILED` - use
-Docker, or install Pango
-([WeasyPrint installation](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#windows)).
+PDF rendering uses headless Chromium through Playwright. After installing
+the packages download it once:
+
+```powershell
+playwright install --only-shell chromium
+```
+
+Without it the service starts, validation works, but printing ends with
+`SYSTEM_INTERNAL_FAIL`. The Docker image has it.
 
 ## Tests and lint
 
@@ -55,7 +59,7 @@ ruff check .
 ```
 
 Tests need no database. Tests that render a real PDF are skipped where
-Pango is missing; to run all of them use the image:
+Chromium is not installed; they can also be run in the image:
 
 ```powershell
 docker run --rm --user root -v "${PWD}:/work:ro" -w /work --entrypoint sh izero-print-module -c "pip install -q pytest==9.2.0 httpx==0.28.1 && pytest -p no:cacheprovider"

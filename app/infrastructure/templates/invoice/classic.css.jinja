@@ -26,30 +26,27 @@
 .area-supplier,
 .area-customer {
   flex: none;
+  overflow: hidden;
   overflow-wrap: anywhere;
 }
-.area-supplier { width: {{ dimensions.slots["supplier"].width_mm }}mm; }
-.area-customer { width: {{ dimensions.slots["customer"].width_mm }}mm; }
+.area-supplier {
+  width: {{ dimensions.slots["supplier"].width_mm }}mm;
+  max-height: {{ dimensions.slots["supplier"].height_mm }}mm;
+}
+.area-customer {
+  width: {{ dimensions.slots["customer"].width_mm }}mm;
+  max-height: {{ dimensions.slots["customer"].height_mm }}mm;
+}
 
 .area-items {
   width: {{ dimensions.slots["items"].width_mm }}mm;
   margin-top: 8mm;
-  border-collapse: collapse;
 }
-.area-items th {
-  padding: 2mm 2mm;
-  border-bottom: 1pt solid #111827;
-  font-size: 7.5pt;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  text-align: left;
-  color: #4b5563;
-}
-.area-items th.num { text-align: right; }
 
 .area-payments {
   width: {{ dimensions.slots["payments"].width_mm }}mm;
+  max-height: {{ dimensions.slots["payments"].height_mm }}mm;
+  overflow: hidden;
   margin-top: 7mm;
   break-inside: avoid;
 }

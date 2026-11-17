@@ -43,10 +43,11 @@ sequenceDiagram
 |-------|------|----------------|
 | Domain | `app/domain/invoices` (entities), `app/domain/shared/value_objects` (`Address`, `CompanyId`, `VatId`, `Iban`), `app/domain/shared/validation.py` | `Invoice` and its parts, value objects, every validation rule |
 | Application | `constants/`, `use_cases/invoices/print_invoice.py`, `use_cases/invoices/format_invoice.py`, `ports/`, `dto/`, `exceptions/printing.py` | Order of steps of UC-1, ports of the template and the renderer, error contract |
-| Infrastructure | `services/jinja_template_engine.py`, `services/weasyprint_document_renderer.py`, `templates/<name>/<variant>.html.jinja`, `api/` | Jinja2 template, WeasyPrint renderer, HTTP endpoint, error mapping |
+| Infrastructure | `services/jinja_template_engine.py`, `services/chromium_document_renderer.py`, `templates/<name>/<variant>.html.jinja`, `api/` | Jinja2 template, Chromium renderer, HTTP endpoint, error mapping |
 
 Composition root: `api/dependencies/printing.py` creates the two adapters
-(one instance each, both are stateless) and the endpoint passes them to the
+(the template engine once - it keeps the compiled templates; the renderer
+for every request) and the endpoint passes them to the
 use case. Tests replace them through FastAPI `dependency_overrides`.
 
 ## 3. Domain
@@ -92,6 +93,7 @@ The data is checked where it enters:
 | Field | How the rule is applied |
 |-------|-------------------------|
 | Any string | Only the maximum length is checked; a required string that is blank is rejected as `required`; the value is printed as supplied |
+| IBAN | Must not hold any whitespace (`invalid_format`) - it is supplied without spaces and grouped only for printing |
 | Decimal | Length = maximum number of digits, before and after the decimal point together (trailing zeros after the point and the sign do not count); the number of decimal places is not checked |
 
 Not validated on purpose: the content of identifiers and codes (IBAN
@@ -120,8 +122,9 @@ validate_decimal(quantity=quantity, max_digits=10)
 The `ValidationProblem` of the error has:
 
 - `code` - stable identifier: `required`, `too_long` (string too long or
-  number with too many digits) from the domain; `invalid_type` and
-  `invalid_format` only from the API for a malformed request
+  number with too many digits) and `invalid_format` (whitespace in the
+  IBAN) from the domain; `invalid_type` and `invalid_format` from the API
+  for a malformed request
 - `field` - name of the rejected field: `number`, `city`, `quantity`,
   `company_id`, `iban`
 - `message` - English description for a developer; callers should rely on
@@ -137,14 +140,14 @@ was rejected.
 Input `InvoiceIn`: the invoice data as supplied. Its structure is
 complete - required values are always there (guaranteed by the API),
 only the optional ones may be `None`. Output `PrintInvoiceOut`:
-`content` (bytes), `document_format`, `invoice_number`.
+`filename` (`invoice-<number>.pdf`), `content` (bytes), `document_format`.
 
 | Step | Failure | Raised |
 |------|---------|--------|
 | 1. Build the domain objects from the DTO, from the inside out (value objects, `Supplier`, `Customer`, items, `Payments`, then `Invoice`). An optional value object that was not supplied is `None` | Data invalid | `InvalidDocumentDataError(problem)` - the next steps never run (BR-2) |
 | 2. `FormatInvoice.execute` | - | Nothing of its own; see below |
-| 3. `TemplateEngine.fill(InvoiceDesign.CLASSIC.value, DocumentOut(title, InvoiceOut))` | Any exception | `TemplateFillingError` (BR-6) |
-| 4. `DocumentRenderer.render` | Any exception | `DocumentRenderingError` (BR-6) |
+| 3. `TemplateEngine.fill(InvoiceDesign.CLASSIC.value, InvoiceOut)` | Any exception | Not caught - goes up to the API (`SYSTEM_INTERNAL_FAIL`) |
+| 4. `DocumentRenderer.render` | Any exception | Not caught - goes up to the API (`SYSTEM_INTERNAL_FAIL`) |
 
 ### DTOs
 
@@ -196,7 +199,7 @@ class InvoiceDesign(Enum):
                 variant=CustomerVariant.PLAIN,
                 address=AddressComponent(variant=AddressVariant.LINES),
             ),
-            items=InvoiceItemComponent(variant=InvoiceItemVariant.ROW),
+            items=InvoiceItemComponent(variant=InvoiceItemVariant.TABLE),
             payments=PaymentsComponent(variant=PaymentsVariant.TABLE),
         ),
     )
@@ -231,8 +234,8 @@ components of their own (own folder, variants, labels and templates),
 but a design never chooses them - they are bound to the type of the
 document in `DocumentComponent.HEADERS` and `.FOOTERS`, and the design
 chooses only the type and the content. The concrete values
-(millimetres, font names, colours) are in the template files. The document gets its own data,
-`DocumentOut` (`title`, `content`), built by the use case.
+(millimetres, font names, colours) are in the template files. The document gets the formatted
+data of its content (e.g. `InvoiceOut`) and passes them to it.
 
 `PrintInvoice` always uses `InvoiceDesign.CLASSIC` - choosing a design by
 the caller is out of scope of the analysis.
@@ -249,7 +252,7 @@ invoice is expected to be valid.
 | Money (unit price, total, amount to pay) | `1 234 567,50` - two decimal places, thousands separated by a non-breaking space |
 | Quantity, VAT rate | `2,5` - as supplied, without trailing zeros |
 | Dates | `2. 11. 2026` |
-| IBAN | Groups of four, whatever grouping it was supplied in: `CZ65 0800 0000 1920 0014 5399` |
+| IBAN | Groups of four: `CZ65 0800 0000 1920 0014 5399` |
 | Everything else | Unchanged |
 
 ### Ports
@@ -257,7 +260,7 @@ invoice is expected to be valid.
 | Port | Contract | Adapter |
 |------|----------|---------|
 | `TemplateEngine.fill(component, data) -> str` | Fills the template of the component (a node of the tree: `name`, `variant`, `labels`) with the formatted data; the template places its own values and its children, each child filled the same way with its part of the data. Does no formatting and holds no text of its own. Any exception = filling failed. | `JinjaTemplateEngine` |
-| `DocumentRenderer.render(document, document_format) -> bytes` | Returns the content of the printed document in the format the use case asks for. Any exception = rendering failed. | `WeasyPrintDocumentRenderer` |
+| `DocumentRenderer.render(document, document_format) -> bytes` | Returns the content of the printed document in the format the use case asks for. Any exception = rendering failed. | `ChromiumDocumentRenderer` |
 
 The use case, not the adapters, turns port failures into application
 errors, so an adapter cannot leak a raw library exception by mistake.
@@ -277,7 +280,7 @@ templates/
 ├── supplier/       plain.html.jinja, plain.css.jinja
 ├── customer/       plain.html.jinja, plain.css.jinja
 ├── address/        lines.html.jinja
-├── invoice_item/   row.html.jinja, row.css.jinja
+├── invoice_item/   table.html.jinja, table.css.jinja
 └── payments/       table.html.jinja, table.css.jinja
 ```
 
@@ -316,13 +319,14 @@ The areas (`.area-*`) and their sizes are defined only in the layout of
 the parent. Styles of a child are in its `.css.jinja` file and the parent puts
 them into the document with `style(...)`. No file has filters, formats
 anything or holds a text of its own (`{{ labels.TITLE }}`). Optional values (unit, VAT rate, VAT IDs, company IDs,
-variable symbol) are left out when not supplied. The item table repeats
-its header on every page and never splits a row; the footer carries the
-invoice number and `Strana X z Y`.
+variable symbol) are left out when not supplied. The item table (the
+whole table is the `invoice_item` component, it gets the list of the
+items) repeats its header on every page and never splits a row; the
+footer carries `Strana X z Y`.
 
 - `autoescape` is on - supplied data cannot inject markup.
 - `StrictUndefined` - a place in the template without data is an error
-  (`TemplateFillingError`), never a silently empty spot.
+  (`SYSTEM_INTERNAL_FAIL`), never a silently empty spot.
 
 ### Dimensions
 
@@ -344,10 +348,10 @@ into `<name>/<variant>.dimensions.json`:
 {
   "needs": { "min_width_mm": 178 },
   "slots": {
-    "supplier": { "width_mm": 84 },
-    "customer": { "width_mm": 84 },
+    "supplier": { "width_mm": 84, "height_mm": 110 },
+    "customer": { "width_mm": 84, "height_mm": 110 },
     "items":    { "width_mm": 178 },
-    "payments": { "width_mm": 178 }
+    "payments": { "width_mm": 178, "height_mm": 35 }
   },
   "rows": [["supplier", "customer"], ["items"], ["payments"]],
   "gap_mm": 10
@@ -358,8 +362,11 @@ The shape of the file is described by `Dimensions` (with `Needs`,
 `Slot` and `Page`) in `app/infrastructure/types/template_dimensions.py`.
 
 The numbers are written once: the styles take the page size, the margins,
-the widths of the slots and the gap from `dimensions`
-(`width: {{ dimensions.slots["supplier"].width_mm }}mm`). In a template
+the widths and heights of the slots and the gap from `dimensions`
+(`width: {{ dimensions.slots["supplier"].width_mm }}mm`). A slot with a
+height is limited to it (`max-height`, `overflow: hidden`) - a child
+that grows over its declared `max_height_mm` is cut, it never pushes
+the rest of the invoice. In a template
 a slot is read with brackets, because `slots.items` would be the method of
 the dictionary.
 
@@ -374,17 +381,23 @@ every design and checks, without rendering:
 
 Not checked yet: that the text of the longest allowed values really fits
 the declared `max_height_mm`. That needs rendering the worst case with
-WeasyPrint and measuring the result; until then the maximum heights are
+Chromium and measuring the result; until then the maximum heights are
 estimates.
 
-**Renderer** - WeasyPrint (HTML + CSS paged media -> PDF, A4).
+**Renderer** - headless Chromium through Playwright (HTML + CSS paged
+media -> PDF). The paper and the margins come from `@page` of the
+document (`prefer_css_page_size`); the footer is a page margin box
+(`@bottom-right`).
 
-- It is forbidden to fetch any URL while rendering
-  (`URLFetcher(allowed_protocols=())`).
-- WeasyPrint needs the native Pango libraries. The Docker image installs
-  them together with the DejaVu fonts. Where they are missing (plain
-  Windows) the service still starts and printing ends with
-  `PRINT_RENDERING_FAILED`; tests that need a real PDF are skipped.
+- No script runs (`java_script_enabled=False`) and every request of the
+  document is aborted - it is forbidden to fetch any URL while rendering.
+- A browser is launched for every document: the sync Playwright objects
+  belong to the thread that created them, and FastAPI runs each request
+  in another thread of its pool.
+- Chromium is installed by `playwright install --only-shell chromium`;
+  the Docker image has it together with the DejaVu fonts. Where it is
+  missing the service still starts and printing ends with
+  `SYSTEM_INTERNAL_FAIL`; tests that need a real PDF are skipped.
 
 ## 6. API
 
@@ -425,7 +438,7 @@ estimates.
     }
   ],
   "payments": {
-    "iban": "CZ65 0800 0000 1920 0014 5399",
+    "iban": "CZ6508000000192000145399",
     "amount_to_pay": "3630.00",
     "currency": "CZK",
     "variable_symbol": "20260042",
@@ -439,11 +452,9 @@ dates as `YYYY-MM-DD`. Unknown fields are ignored.
 
 | Outcome | Status | Body |
 |---------|--------|------|
-| Printed | 200 | The PDF, `Content-Type: application/pdf`, `Content-Disposition: inline; filename="invoice-<number>.pdf"` |
+| Printed | 200 | The PDF, `Content-Type: application/pdf`, `Content-Disposition: inline; filename*=UTF-8''invoice-<number>.pdf` (percent-encoded) |
 | Invalid data | 422 | `ResponseContainer`, `message_id` `PRINT_INVALID_DATA` (3000001), `data` = list with one `{code, field, message}` |
-| Template filling failed | 500 | `ResponseContainer`, `PRINT_TEMPLATE_FILLING_FAILED` (3000002) |
-| Rendering failed | 500 | `ResponseContainer`, `PRINT_RENDERING_FAILED` (3000003) |
-| Anything unexpected | 500 | `ResponseContainer`, `SYSTEM_INTERNAL_FAIL` (9000001) |
+| Anything else (incl. a failed template filling or rendering) | 500 | `ResponseContainer`, `SYSTEM_INTERNAL_FAIL` (9000001) |
 
 All 5xx responses are reported to Sentry.
 
@@ -480,8 +491,8 @@ PostgreSQL is therefore still required, only for the audit log.
 | BR-1, section 5 (every field rule) | `tests/unit/domain/test_invoice.py`, `test_value_objects.py` |
 | BR-2, AC-1 (problem returned, nothing printed) | `test_invoice.py::test_entity_rejects_invalid_value`, `tests/unit/application/test_print_invoice.py::test_invalid_data_...`, `tests/api/test_print_invoice.py::test_invalid_data_...` |
 | BR-4 (template filled with the data) | `tests/unit/application/test_format_invoice.py`, `tests/unit/infrastructure/test_jinja_template_engine.py` |
-| BR-5, AC-2 (PDF returned) | `test_weasyprint_document_renderer.py`, `tests/api/...::test_valid_invoice_is_returned_as_pdf`, `::test_end_to_end_with_the_real_renderer` |
-| BR-6 (print error) | `tests/unit/application/...::test_template_failure_...`, `::test_rendering_failure_...`, `tests/api/...::test_template_failure_...`, `::test_rendering_failure_...` |
+| BR-5, AC-2 (PDF returned) | `test_chromium_document_renderer.py`, `tests/api/...::test_valid_invoice_is_returned_as_pdf`, `::test_end_to_end_with_the_real_renderer` |
+| BR-6 (print error) | `tests/unit/application/...::test_template_failure_...`, `::test_rendering_failure_...` (not handled by the use case), `tests/api/...::test_template_failure_...`, `::test_rendering_failure_...` (`SYSTEM_INTERNAL_FAIL`) |
 | BR-3, BR-7 | No code - see sections 6 and 7 |
 
 Run with `pytest`. Ports are replaced by the in-memory fakes in

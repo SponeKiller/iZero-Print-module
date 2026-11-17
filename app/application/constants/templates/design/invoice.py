@@ -63,7 +63,7 @@ class InvoiceDesign(Enum):
                 variant=CustomerVariant.PLAIN,
                 address=AddressComponent(variant=AddressVariant.LINES),
             ),
-            items=InvoiceItemComponent(variant=InvoiceItemVariant.ROW),
+            items=InvoiceItemComponent(variant=InvoiceItemVariant.TABLE),
             payments=PaymentsComponent(variant=PaymentsVariant.TABLE),
         ),
     )

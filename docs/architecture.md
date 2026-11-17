@@ -123,12 +123,16 @@ Every response is a `ResponseContainer` (`message_id`, `message`, `data`).
   (`MessageId`, HTTP status) pair; `main.py` registers one handler for all.
 - Endpoints let these errors propagate, so `get_db` rolls the transaction
   back before the response is built.
+- The use case turns a `DomainValidationError` into its application
+  error (the API knows only application errors).
+- An exception is caught only where the code knows how to handle it,
+  never "to be safe".
 - Anything else ends in the global fallback handler: Sentry +
   `SYSTEM_INTERNAL_FAIL` (500).
 
 `MessageId` format: 2 digits main entity, 2 digits sub-entity, 3 digits
-counter. `20xxxxx` (auth) and `90xxxxx` (system) are shared across all iZero
-services and must keep the same values as the auth service.
+counter. `90xxxxx` (system) is shared across all iZero services and must
+keep the same values as the auth service.
 
 ## Observability
 

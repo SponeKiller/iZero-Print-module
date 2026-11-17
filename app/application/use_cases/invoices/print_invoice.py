@@ -4,15 +4,9 @@ from app.application.constants.document_formats import DocumentFormat
 from app.application.constants.templates.design.invoice import (
     InvoiceDesign,
 )
-from app.application.constants.templates.labels.invoice import InvoiceLabel
 from app.application.dto.invoice.invoice import InvoiceIn
 from app.application.dto.invoice.print_invoice import PrintInvoiceOut
-from app.application.dto.shared.document import DocumentOut
-from app.application.exceptions.printing import (
-    DocumentRenderingError,
-    InvalidDocumentDataError,
-    TemplateFillingError,
-)
+from app.application.exceptions.printing import InvalidDocumentDataError
 from app.application.ports.document_renderer import DocumentRenderer
 from app.application.ports.template_engine import TemplateEngine
 from app.application.use_cases.invoices.format_invoice import FormatInvoice
@@ -60,11 +54,8 @@ class PrintInvoice:
         Raises:
             InvalidDocumentDataError: If the data is invalid; nothing is
              filled or rendered (BR-2)
-            TemplateFillingError: If filling the template fails (BR-6)
-            DocumentRenderingError: If rendering fails (BR-6)
         """
-        # The domain objects are built here, one by one from the inside
-        # out - an entity never builds another entity.
+        
         try:
             supplier = Supplier.create(
                 name=dto.supplier.name,
@@ -121,26 +112,14 @@ class PrintInvoice:
 
         formatted_invoice = FormatInvoice().execute(invoice)
 
-        try:
-            document = self.template_engine.fill(
-                InvoiceDesign.CLASSIC.value,
-                DocumentOut(
-                    title=f"{InvoiceLabel.TITLE} {formatted_invoice.number}",
-                    content=formatted_invoice,
-                ),
-            )
-        except Exception as e:
-            raise TemplateFillingError("Filling the template failed") from e
+        document = self.template_engine.fill(
+            InvoiceDesign.CLASSIC.value, formatted_invoice
+        )
 
-        try:
-            content = self.document_renderer.render(
-                document, DocumentFormat.PDF
-            )
-        except Exception as e:
-            raise DocumentRenderingError("Rendering failed") from e
+        content = self.document_renderer.render(document, DocumentFormat.PDF)
 
         return PrintInvoiceOut(
-            invoice_number=invoice.number,
+            filename=f"invoice-{invoice.number}.{DocumentFormat.PDF}",
             content=content,
             document_format=DocumentFormat.PDF,
         )

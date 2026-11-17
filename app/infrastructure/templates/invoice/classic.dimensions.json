@@ -4,16 +4,19 @@
   },
   "slots": {
     "supplier": {
-      "width_mm": 84
+      "width_mm": 84,
+      "height_mm": 110
     },
     "customer": {
-      "width_mm": 84
+      "width_mm": 84,
+      "height_mm": 110
     },
     "items": {
       "width_mm": 178
     },
     "payments": {
-      "width_mm": 178
+      "width_mm": 178,
+      "height_mm": 35
     }
   },
   "rows": [

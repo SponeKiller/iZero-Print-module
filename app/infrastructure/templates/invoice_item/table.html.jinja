@@ -1,0 +1,28 @@
+<table class="items">
+  <thead>
+    <tr>
+      <th>{{ labels.DESCRIPTION }}</th>
+      <th class="num">{{ labels.QUANTITY }}</th>
+      <th>{{ labels.UNIT }}</th>
+      <th class="num">{{ labels.UNIT_PRICE }}</th>
+      <th class="num">{{ labels.VAT_RATE }}</th>
+      <th class="num">{{ labels.TOTAL }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in data %}
+    <tr class="item">
+      <td class="description">{{ item.description }}</td>
+      <td class="num">{{ item.quantity }}</td>
+      <td>{{ item.unit or "" }}</td>
+      <td class="num">{{ item.unit_price }}</td>
+      <td class="num">
+        {%- if item.vat_rate is not none -%}
+        {{ item.vat_rate }}&nbsp;%
+        {%- endif -%}
+      </td>
+      <td class="num">{{ item.total }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>

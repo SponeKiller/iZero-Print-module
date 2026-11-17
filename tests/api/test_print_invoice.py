@@ -14,7 +14,7 @@ from tests.support import (
     FakeDocumentRenderer,
     FakeTemplateEngine,
     invoice_json,
-    requires_weasyprint,
+    requires_chromium,
 )
 
 URL = "/api/invoices/print"
@@ -52,15 +52,15 @@ def test_valid_invoice_is_returned_as_pdf(client, renderer):
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/pdf"
     assert response.headers["content-disposition"] == (
-        'inline; filename="invoice-2026-0042.pdf"'
+        "inline; filename*=UTF-8''invoice-2026-0042.pdf"
     )
     assert response.content.startswith(b"%PDF-fake ")
     # the real template was filled with the supplied data
-    assert "Faktura 2026-0042" in renderer.rendered[0]
+    assert "2026-0042" in renderer.rendered[0]
     assert "CZ65 0800 0000 1920 0014 5399" in renderer.rendered[0]
 
 
-def test_invoice_number_is_sanitized_in_the_file_name(client):
+def test_file_name_is_encoded_in_the_header(client):
     body = invoice_json()
     body["number"] = 'FV/2026 "42"'
 
@@ -68,7 +68,7 @@ def test_invoice_number_is_sanitized_in_the_file_name(client):
 
     assert response.status_code == 200
     assert response.headers["content-disposition"] == (
-        'inline; filename="invoice-FV_2026__42_.pdf"'
+        "inline; filename*=UTF-8''invoice-FV%2F2026%20%2242%22.pdf"
     )
 
 
@@ -187,7 +187,7 @@ def test_missing_body_is_rejected(client):
     ] == [("", "required")]
 
 
-def test_template_failure_returns_print_error(client):
+def test_template_failure_is_an_internal_error(client):
     app.dependency_overrides[get_template_engine] = lambda: (
         FakeTemplateEngine(error=RuntimeError("template is broken"))
     )
@@ -196,13 +196,13 @@ def test_template_failure_returns_print_error(client):
 
     assert response.status_code == 500
     assert response.json() == {
-        "message_id": MessageId.PRINT_TEMPLATE_FILLING_FAILED,
+        "message_id": MessageId.SYSTEM_INTERNAL_FAIL,
         "message": None,
         "data": None,
     }
 
 
-def test_rendering_failure_returns_print_error(client):
+def test_rendering_failure_is_an_internal_error(client):
     app.dependency_overrides[get_document_renderer] = lambda: (
         FakeDocumentRenderer(error=OSError("cannot load library"))
     )
@@ -211,13 +211,13 @@ def test_rendering_failure_returns_print_error(client):
 
     assert response.status_code == 500
     assert response.json() == {
-        "message_id": MessageId.PRINT_RENDERING_FAILED,
+        "message_id": MessageId.SYSTEM_INTERNAL_FAIL,
         "message": None,
         "data": None,
     }
 
 
-@requires_weasyprint
+@requires_chromium
 def test_end_to_end_with_the_real_renderer():
     with TestClient(app) as client:
         response = client.post(URL, json=invoice_json())

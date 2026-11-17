@@ -13,7 +13,8 @@ from app.domain.shared.exceptions.validation import (
 #     validate_text(description=description, max_length=200)
 #
 # Only the length is checked (and that a required string is not blank),
-# never whether the value is correct.
+# never whether the value is correct - except values that must not hold
+# whitespace (IBAN).
 
 
 def validate_text(
@@ -79,6 +80,26 @@ def validate_decimal(*, max_digits: int, **field: Decimal | None) -> None:
             ProblemCode.TOO_LONG,
             name,
             f"Must have at most {max_digits} digits.",
+        )
+
+
+def validate_no_whitespace(**field: str) -> None:
+    """
+    Checks that a string holds no whitespace.
+
+    Args:
+        field: The checked value under the name of its field.
+
+    Raises:
+        DomainValidationError: If the value holds a whitespace character.
+    """
+    ((name, value),) = field.items()
+
+    if any(character.isspace() for character in value):
+        _fail(
+            ProblemCode.INVALID_FORMAT,
+            name,
+            "Must not contain whitespace.",
         )
 
 

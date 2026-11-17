@@ -10,10 +10,10 @@ from app.infrastructure.api.errors import APPLICATION_ERRORS
 from app.infrastructure.api.middleware.http_audit import HttpAuditMiddleware
 from app.infrastructure.api.router import router
 from app.infrastructure.api.schemas.base import JSONResponse, ResponseContainer
-from app.infrastructure.api.schemas.invoice.print_invoice import (
+from app.infrastructure.api.schemas.message_id import MessageId
+from app.infrastructure.api.schemas.shared.validation_problem import (
     ValidationProblemSchemaOut,
 )
-from app.infrastructure.api.schemas.message_id import MessageId
 from app.infrastructure.config import settings
 
 sentry_sdk.init(
@@ -52,11 +52,6 @@ app.include_router(router)
 #Global exceptions
 async def application_error_handler(request: Request, exc: ApplicationError):
     message_id, status_code = APPLICATION_ERRORS[type(exc)]
-
-    # A failed print (BR-6) is a fault of the service, not of the caller -
-    # report it like any other unexpected error.
-    if status_code >= status.HTTP_500_INTERNAL_SERVER_ERROR:
-        sentry_sdk.capture_exception(exc)
 
     # Invalid data (BR-2): return the validation problem to the caller.
     # A list, to keep one format with request_validation_error_handler.

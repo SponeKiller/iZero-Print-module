@@ -1,4 +1,4 @@
-import re
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Response, status
 
@@ -15,42 +15,17 @@ from app.infrastructure.api.dependencies.printing import (
     get_document_renderer,
     get_template_engine,
 )
-from app.infrastructure.api.schemas.base import ResponseContainer
-from app.infrastructure.api.schemas.invoice.print_invoice import (
-    PrintInvoiceSchemaIn,
-    ValidationProblemSchemaOut,
-)
+from app.infrastructure.api.schemas.invoice.invoice import InvoiceSchemaIn
 
 router = APIRouter()
 
-
-# Plain `def` (not async): rendering is CPU-bound, so FastAPI runs the
-# endpoint in its threadpool instead of blocking the event loop.
 @router.post(
     "/print",
     status_code=status.HTTP_200_OK,
     response_class=Response,
-    responses={
-        status.HTTP_200_OK: {
-            "description": "The printed invoice",
-            "content": {
-                "application/pdf": {
-                    "schema": {"type": "string", "format": "binary"},
-                },
-            },
-        },
-        status.HTTP_422_UNPROCESSABLE_ENTITY: {
-            "description": "Invalid data - nothing was printed",
-            "model": ResponseContainer[list[ValidationProblemSchemaOut]],
-        },
-        status.HTTP_500_INTERNAL_SERVER_ERROR: {
-            "description": "Filling the template or rendering failed",
-            "model": ResponseContainer[None],
-        },
-    },
 )
 def print_invoice(
-    invoice: PrintInvoiceSchemaIn,
+    invoice: InvoiceSchemaIn,
     template_engine: TemplateEngine = Depends(get_template_engine),
     document_renderer: DocumentRenderer = Depends(get_document_renderer),
 ):
@@ -79,17 +54,12 @@ def print_invoice(
         )
     )
 
-    # The invoice number comes from the caller - keep only characters
-    # that are safe in a header and in a file name.
-    filename = re.sub(r"[^A-Za-z0-9_-]", "_", result.invoice_number)
-
     return Response(
         content=result.content,
         media_type=f"application/{result.document_format}",
         headers={
             "Content-Disposition": (
-                f'inline; filename="invoice-{filename}'
-                f'.{result.document_format}"'
+                f"inline; filename*=UTF-8''{quote(result.filename, safe='')}"
             ),
         },
     )

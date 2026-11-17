@@ -2,17 +2,16 @@
 <html lang="cs">
 <head>
 <meta charset="utf-8">
-<title>{{ data.title }}</title>
 <style>
   {{ style(component) }}
-  {{ style(component.header, data) }}
-  {{ style(component.footer, data) }}
+  {{ style(component.header) }}
+  {{ style(component.footer) }}
   {{ style(component.content) }}
 </style>
 </head>
 <body>
 
-{{ render(component.content, data.content) }}
+{{ render(component.content, data) }}
 
 </body>
 </html>

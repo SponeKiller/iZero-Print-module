@@ -40,9 +40,24 @@ class TestIban:
         assert Iban(value).value == value
 
     def test_keeps_the_value_as_supplied(self):
-        value = "cz65 0800 0000 1920 0014 5399"
+        value = "cz6508000000192000145399"
 
         assert Iban(value).value == value
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "CZ65 0800 0000 1920 0014 5399",
+            "CZ6508000000192000145399 ",
+            "CZ65	08000000192000145399",
+            "CZ65 08000000192000145399",
+        ],
+    )
+    def test_rejects_iban_with_whitespace(self, value):
+        assert problem_of(lambda: Iban(value)) == (
+            "iban",
+            ProblemCode.INVALID_FORMAT,
+        )
 
     def test_rejects_too_long_iban(self):
         assert problem_of(lambda: Iban("CZ65" + "0" * 31)) == (

@@ -103,17 +103,9 @@ def test_other_numbers_have_no_trailing_zeros(value, expected):
     assert formatted.items[0].vat_rate == expected
 
 
-@pytest.mark.parametrize(
-    "value",
-    [
-        "CZ6508000000192000145399",
-        "CZ65 0800 0000 1920 0014 5399",
-        "CZ65080000 00192000145399",
-    ],
-)
-def test_iban_is_printed_in_groups_of_four(value):
+def test_iban_is_printed_in_groups_of_four():
     formatted = FormatInvoice().execute(
-        invoice(payments=payments(iban=Iban(value)))
+        invoice(payments=payments(iban=Iban("CZ6508000000192000145399")))
     )
 
     assert formatted.payments.iban == "CZ65 0800 0000 1920 0014 5399"

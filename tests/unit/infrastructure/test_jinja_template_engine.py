@@ -15,7 +15,6 @@ from app.application.constants.templates.labels.invoice_item import (
 from app.application.constants.templates.labels.payments import PaymentsLabel
 from app.application.constants.templates.labels.supplier import SupplierLabel
 from app.application.dto.invoice.invoice import InvoiceOut
-from app.application.dto.shared.document import DocumentOut
 from app.infrastructure.config import settings
 from app.infrastructure.services.jinja_template_engine import (
     JinjaTemplateEngine,
@@ -36,10 +35,7 @@ CLASSIC = DOCUMENT.content
 
 
 def fill(invoice: InvoiceOut) -> str:
-    return JinjaTemplateEngine(settings.templates_dir).fill(
-        DOCUMENT,
-        DocumentOut(title=f"Faktura {invoice.number}", content=invoice),
-    )
+    return JinjaTemplateEngine(settings.templates_dir).fill(DOCUMENT, invoice)
 
 
 def write_templates(directory, files: dict[str, str]) -> None:
@@ -52,7 +48,7 @@ def test_fills_every_supplied_value():
     html = fill(formatted_invoice())
 
     for expected in [
-        "Faktura 2026-0042",
+        "2026-0042",
         "Dodavatel s.r.o.",
         "Dlouhá 12",
         "110 00 Praha",
@@ -140,14 +136,13 @@ def test_document_decides_the_page_and_places_the_content(tmp_path):
         {
             "document/standard.html.jinja": (
                 "<style>{{ style(component) }}"
-                "{{ style(component.header, data) }}"
-                "{{ style(component.footer, data) }}</style>"
-                "[{{ render(component.content, data.content) }}]"
+                "{{ style(component.header) }}"
+                "{{ style(component.footer) }}</style>"
+                "[{{ render(component.content, data) }}]"
             ),
             "document/standard.css.jinja": "@page { margin: 1mm }",
             "footer/page_numbers.css.jinja": (
-                '@page { @bottom-left { content: "{{ data.title }} '
-                '{{ labels.PAGE }}" } }'
+                '@page { @bottom-right { content: "{{ labels.PAGE }}" } }'
             ),
             "invoice/classic.html.jinja": "{{ data.number }}",
         },
@@ -155,10 +150,10 @@ def test_document_decides_the_page_and_places_the_content(tmp_path):
 
     # the header variant `none` has no file and prints nothing
     assert JinjaTemplateEngine(tmp_path).fill(
-        DOCUMENT, DocumentOut(title="Doc", content=formatted_invoice())
+        DOCUMENT, formatted_invoice()
     ) == (
         "<style>@page { margin: 1mm }"
-        '@page { @bottom-left { content: "Doc Strana" } }</style>'
+        '@page { @bottom-right { content: "Strana" } }</style>'
         "[2026-0042]"
     )
 
@@ -192,8 +187,8 @@ def test_page_and_areas_are_sized_by_the_dimensions():
     for expected in [
         "size: 210mm 297mm;",
         "gap: 10mm;",
-        ".area-supplier { width: 84mm; }",
-        ".area-customer { width: 84mm; }",
+        "width: 84mm;\n  max-height: 110mm;",
+        "width: 178mm;\n  max-height: 35mm;",
     ]:
         assert expected in html
 

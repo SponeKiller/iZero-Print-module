@@ -92,8 +92,7 @@ class FormatInvoice:
             for item in invoice.items
         ]
 
-        # Grouped by four, whatever grouping it was supplied in
-        iban = "".join(invoice.payments.iban.value.split())
+        iban = invoice.payments.iban.value
         issue_date = invoice.issue_date
         due_date = invoice.payments.due_date
 

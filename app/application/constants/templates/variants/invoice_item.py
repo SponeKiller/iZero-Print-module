@@ -2,6 +2,6 @@ from enum import StrEnum
 
 
 class InvoiceItemVariant(StrEnum):
-    """Visual variants of an invoice item."""
+    """Visual variants of the invoice items."""
 
-    ROW = "row"
+    TABLE = "table"

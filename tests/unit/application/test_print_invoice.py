@@ -14,11 +14,7 @@ from app.application.dto.invoice.invoice_item import InvoiceItemIn
 from app.application.dto.invoice.payments import PaymentsIn
 from app.application.dto.invoice.supplier import SupplierIn
 from app.application.dto.shared.address import AddressIn
-from app.application.exceptions.printing import (
-    DocumentRenderingError,
-    InvalidDocumentDataError,
-    TemplateFillingError,
-)
+from app.application.exceptions.printing import InvalidDocumentDataError
 from app.application.use_cases.invoices.print_invoice import PrintInvoice
 from app.domain.shared.exceptions.validation import ProblemCode
 from tests.support import (
@@ -79,13 +75,12 @@ def test_prints_valid_invoice():
     assert [invoice.number for invoice in template.filled] == ["2026-0042"]
     # the application layer decides the design
     assert template.components == [InvoiceDesign.CLASSIC.value]
-    assert template.documents[0].title == "Faktura 2026-0042"
     assert renderer.rendered == ["<invoice 2026-0042>"]
     assert result.content == b"%PDF-fake <invoice 2026-0042>"
     # the application layer decides the format
     assert renderer.formats == [DocumentFormat.PDF]
     assert result.document_format == DocumentFormat.PDF
-    assert result.invoice_number == "2026-0042"
+    assert result.filename == "invoice-2026-0042.pdf"
 
 
 def test_invalid_data_is_rejected_and_nothing_is_printed():
@@ -113,7 +108,7 @@ def test_domain_objects_are_built_from_the_supplied_data():
         print_invoice_in(),
         payments=replace(
             PAYMENTS,
-            iban="CZ65 0800 0000 1920 0014 5399",
+            iban="CZ6508000000192000145399",
             variable_symbol=None,
         ),
     )
@@ -188,26 +183,26 @@ def test_invalid_value_is_rejected_by_the_domain(changes, expected):
     assert (problem.field, problem.code) == expected
 
 
-def test_template_failure_is_a_print_error_and_nothing_is_rendered():
+def test_template_failure_is_not_handled_and_nothing_is_rendered():
     cause = RuntimeError("template is broken")
     renderer = FakeDocumentRenderer()
 
-    with pytest.raises(TemplateFillingError) as raised:
+    with pytest.raises(RuntimeError) as raised:
         PrintInvoice(FakeTemplateEngine(error=cause), renderer).execute(
             print_invoice_in()
         )
 
-    assert raised.value.__cause__ is cause
+    assert raised.value is cause
     assert renderer.rendered == []
 
 
-def test_rendering_failure_is_a_print_error():
-    cause = OSError("cannot load library 'libpango'")
+def test_rendering_failure_is_not_handled():
+    cause = RuntimeError("Executable doesn't exist")
 
-    with pytest.raises(DocumentRenderingError) as raised:
+    with pytest.raises(RuntimeError) as raised:
         PrintInvoice(
             FakeTemplateEngine(),
             FakeDocumentRenderer(error=cause),
         ).execute(print_invoice_in())
 
-    assert raised.value.__cause__ is cause
+    assert raised.value is cause

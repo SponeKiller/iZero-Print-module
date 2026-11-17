@@ -8,7 +8,6 @@ import pytest
 from app.application.constants.document_formats import DocumentFormat
 from app.application.dto.invoice.invoice import InvoiceOut
 from app.application.dto.shared.component import Component
-from app.application.dto.shared.document import DocumentOut
 from app.application.use_cases.invoices.format_invoice import FormatInvoice
 from app.domain.invoices.entities.customer import Customer
 from app.domain.invoices.entities.invoice import Invoice
@@ -153,7 +152,7 @@ def invoice_json() -> dict[str, Any]:
             },
         ],
         "payments": {
-            "iban": "CZ65 0800 0000 1920 0014 5399",
+            "iban": "CZ6508000000192000145399",
             "amount_to_pay": "3630.00",
             "currency": "CZK",
             "variable_symbol": "20260042",
@@ -167,25 +166,21 @@ def formatted_invoice(**overrides: Any) -> InvoiceOut:
     return FormatInvoice().execute(invoice(**overrides))
 
 
-def formatted_document(**overrides: Any) -> DocumentOut:
-    """Document with a valid invoice - the input of the template engine."""
-    content = formatted_invoice(**overrides)
+def chromium_missing() -> bool:
+    """True where the Chromium of Playwright is not installed."""
+    from playwright.sync_api import Error, sync_playwright
 
-    return DocumentOut(title=f"Faktura {content.number}", content=content)
-
-
-def weasyprint_missing() -> bool:
-    """True where WeasyPrint's native libraries (Pango) are not installed."""
     try:
-        import weasyprint  # noqa: F401
-    except (ImportError, OSError):
+        with sync_playwright() as playwright:
+            playwright.chromium.launch().close()
+    except Error:
         return True
     return False
 
 
-requires_weasyprint = pytest.mark.skipif(
-    weasyprint_missing(),
-    reason="WeasyPrint native libraries (Pango) are not installed",
+requires_chromium = pytest.mark.skipif(
+    chromium_missing(),
+    reason="Chromium is not installed (playwright install chromium)",
 )
 
 
@@ -195,17 +190,14 @@ class FakeTemplateEngine:
     def __init__(self, error: Exception | None = None) -> None:
         self.error = error
         self.components: list[Component] = []
-        self.documents: list[DocumentOut] = []
-        # formatted invoices of the documents
         self.filled: list[InvoiceOut] = []
 
-    def fill(self, component: Component, data: DocumentOut) -> str:
+    def fill(self, component: Component, data: InvoiceOut) -> str:
         if self.error is not None:
             raise self.error
         self.components.append(component)
-        self.documents.append(data)
-        self.filled.append(data.content)
-        return f"<invoice {data.content.number}>"
+        self.filled.append(data)
+        return f"<invoice {data.number}>"
 
 
 class FakeDocumentRenderer:

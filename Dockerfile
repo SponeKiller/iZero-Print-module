@@ -22,22 +22,24 @@ FROM python:3.13-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PATH="/opt/venv/bin:$PATH"
+    PATH="/opt/venv/bin:$PATH" \
+    PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
 
 # libpq5 for psycopg2, postgresql-client for pg_isready in the entrypoint,
-# Pango + HarfBuzz for WeasyPrint (PDF rendering), DejaVu as the font the
-# document templates are set in (the slim image ships no fonts at all)
+# DejaVu as the font the document templates are set in (the slim image
+# ships no fonts at all)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        libpq5 \
        postgresql-client \
-       libpango-1.0-0 \
-       libpangoft2-1.0-0 \
-       libharfbuzz-subset0 \
        fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /opt/venv /opt/venv
+
+# Headless Chromium for PDF rendering, with the system libraries it needs
+RUN playwright install --with-deps --only-shell chromium \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /srv
 

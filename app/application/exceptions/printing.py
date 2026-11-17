@@ -11,11 +11,3 @@ class InvalidDocumentDataError(ApplicationError):
     def __init__(self, problem: ValidationProblem) -> None:
         super().__init__()
         self.problem = problem
-
-
-class TemplateFillingError(ApplicationError):
-    """Specific error indicating that filling the template failed."""
-
-
-class DocumentRenderingError(ApplicationError):
-    """Specific error indicating that rendering the document failed."""
