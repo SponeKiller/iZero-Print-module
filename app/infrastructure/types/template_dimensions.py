@@ -4,7 +4,7 @@ from typing import TypedDict
 # variant of a component on the paper. All lengths are in millimetres.
 #
 #     {
-#       "needs": { "min_width_mm": 80, "max_height_mm": 110 },
+#       "needs": { "max_width_mm": 80, "max_height_mm": 110 },
 #       "slots": { "address": { "width_mm": 80, "height_mm": 60 } },
 #       "rows":  [["address"]],
 #       "gap_mm": 10
@@ -16,12 +16,12 @@ class Needs(TypedDict, total=False):
     What the component needs from its parent.
 
     Attributes:
-        min_width_mm: Width it needs at least.
+        max_width_mm: The most it can be wide.
         max_height_mm: The most it can be high; missing when it flows
          over pages.
     """
 
-    min_width_mm: int
+    max_width_mm: int
     max_height_mm: int
 
 

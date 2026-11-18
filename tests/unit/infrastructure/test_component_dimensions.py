@@ -47,44 +47,63 @@ def check(component: Any, width_mm: float, page_height_mm: float) -> None:
 
     row_heights = []
     for row in rows:
+
+        # Row has to fit to what parent offers
         gaps = dimensions.get("gap_mm", 0) * (len(row) - 1)
         row_width = sum(slots[slot]["width_mm"] for slot in row) + gaps
-
         assert row_width <= width_mm, (
             f"{name}: row {row} is {row_width} mm wide,"
             f" only {width_mm} mm is available"
         )
 
-        heights = []
+        # slots side by side form one line, must have same height
+        slot_heights = {slot: slots[slot].get("height_mm") for slot in row}
+        assert len(set(slot_heights.values())) == 1, (
+            f"{name}: slots in row {row} differ in height: {slot_heights}"
+        )
+
+        row_heights.append(slot_heights[row[0]])
+
         for slot in row:
             child = getattr(component, slot)
             child_name = f"{child.name}/{child.variant}"
             child_needs = dimensions_of(child).get("needs", {})
 
-            assert child_needs["min_width_mm"] <= slots[slot]["width_mm"], (
+            # Slot has to fit to set width from parent
+            assert child_needs["max_width_mm"] <= slots[slot]["width_mm"], (
                 f"{name} gives {child_name} {slots[slot]['width_mm']} mm"
-                f" of width, it needs {child_needs['min_width_mm']} mm"
+                f" of width, it needs {child_needs['max_width_mm']} mm"
             )
 
+            # a child that flows over pages cannot be put into a slot with
+            # a limited height, except if its main component (document)
+            # limited child has to fit into the slot or page if parent
+            # has no limitation
             height = child_needs.get("max_height_mm")
-            if height is not None:
-                offered = slots[slot].get("height_mm", page_height_mm)
-
+            offered = slots[slot].get("height_mm")
+            if height is None:
+                assert offered is None or "page" in dimensions, (
+                    f"{name} gives {child_name} {offered} mm of height,"
+                    f" but it flows over component"
+                )
+            else:
+                offered = page_height_mm if offered is None else offered
                 assert height <= offered, (
                     f"{name} gives {child_name} {offered} mm of height,"
                     f" it needs {height} mm"
                 )
-                heights.append(height)
 
             check(child, slots[slot]["width_mm"], page_height_mm)
 
-        row_heights.append(max(heights, default=0))
-
-    # what cannot flow over pages has to fit into what the component
-    # itself can take
+    # If component has max height, it has to limit its child
+    # to fit into that max height
     if "max_height_mm" in needs:
+        assert None not in row_heights, (
+            f"{name}: declares {needs['max_height_mm']} mm of height,"
+            f" but some of its rows are not limited: {row_heights}"
+        )
         assert sum(row_heights) <= needs["max_height_mm"], (
-            f"{name}: its children need {sum(row_heights)} mm of height,"
+            f"{name}: its rows take {sum(row_heights)} mm of height,"
             f" it declares {needs['max_height_mm']} mm"
         )
 

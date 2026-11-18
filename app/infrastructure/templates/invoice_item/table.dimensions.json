@@ -1,5 +1,5 @@
 {
   "needs": {
-    "min_width_mm": 178
+    "max_width_mm": 178
   }
 }
