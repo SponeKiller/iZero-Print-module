@@ -13,8 +13,8 @@ from app.application.dto.invoice.payments import PaymentsIn
 from app.application.dto.invoice.supplier import SupplierIn
 from app.application.dto.shared.address import AddressIn
 from app.application.use_cases.invoices.print_invoice import PrintInvoice
-from tests.shared.fake_document_renderer import FakeDocumentRenderer
-from tests.shared.fake_template_engine import FakeTemplateEngine
+from tests.support.fake_document_renderer import FakeDocumentRenderer
+from tests.support.fake_template_engine import FakeTemplateEngine
 
 
 def address_in(**overrides: Any) -> AddressIn:

@@ -108,19 +108,19 @@ Every layer of the document gets its tests. Rules for all of them:
 - Every test file holds its own data - no shared test data module. A
   test checks the values it defined itself.
 - The in-memory fakes of the ports are shared by all documents:
-  `tests/shared/fake_template_engine.py` and
-  `tests/shared/fake_document_renderer.py`. Both remember what they were
+  `tests/support/fake_template_engine.py` and
+  `tests/support/fake_document_renderer.py`. Both remember what they were
   given and raise the `error` passed to them, if any.
 - Tests that print a real PDF need Chromium and fail without it - they
   are never skipped.
 - No test needs a database.
 - Run everything with `pytest`, one folder with `pytest tests/visual`.
 
-### API
+### E2E
 
-`tests/api/test_print_delivery_note.py` - the HTTP contract through
+`tests/e2e/delivery_note/test_print_delivery_note.py` - the HTTP contract through
 FastAPI `TestClient`, the renderer replaced by `FakeDocumentRenderer` through
-`app.dependency_overrides` (copy `tests/api/test_print_invoice.py`):
+`app.dependency_overrides` (copy `tests/e2e/invoice/test_print_invoice.py`):
 
 - 200: `Content-Type: application/pdf`, `Content-Disposition` with the
   percent-encoded file name, the real template filled with the data
@@ -132,15 +132,16 @@ FastAPI `TestClient`, the renderer replaced by `FakeDocumentRenderer` through
 
 ### Unit
 
-One folder per layer:
+One folder per layer, the tests of one document in its own subfolder
+(`tests/unit/<layer>/delivery_note/`):
 
 | Folder | Test file | What it checks |
 |--------|-----------|----------------|
-| `tests/unit/domain` | `test_delivery_note.py` | Every rule of every entity rejects an invalid value (`field`, `code`) and accepts the boundary values; the first rejected value stops the entity. New value objects go to `test_value_objects.py`. |
-| `tests/unit/application` | `test_format_delivery_note.py` | Every value is formatted to its printed text (money, numbers, dates); optional values stay `None`; nothing is validated. |
-| `tests/unit/application` | `test_print_delivery_note.py` | The order of steps with `FakeTemplateEngine` and `FakeDocumentRenderer` from `tests/shared/`: valid data is formatted, filled with the design and rendered as PDF; invalid data raises `InvalidDocumentDataError` and nothing is filled; port failures are not caught; the file name. |
-| `tests/unit/infrastructure` | `test_jinja_template_engine.py` | The real templates with formatted data (`<Entity>Out` built in the test, not through the format use case): every value and label is printed, optional values are left out. |
-| `tests/unit/infrastructure` | `test_component_dimensions.py` | Add `DeliveryNoteDesign` - checks without rendering that every child fits its slot and the slots fit the page. |
+| `tests/unit/domain/delivery_note` | `test_delivery_note.py` | Every rule of every entity rejects an invalid value (`field`, `code`) and accepts the boundary values; the first rejected value stops the entity. New value objects go to `tests/unit/domain/test_value_objects.py`. |
+| `tests/unit/application/delivery_note` | `test_format_delivery_note.py` | Every value is formatted to its printed text (money, numbers, dates); optional values stay `None`; nothing is validated. |
+| `tests/unit/application/delivery_note` | `test_print_delivery_note.py` | The order of steps with `FakeTemplateEngine` and `FakeDocumentRenderer` from `tests/support/`: valid data is formatted, filled with the design and rendered as PDF; invalid data raises `InvalidDocumentDataError` and nothing is filled; port failures are not caught; the file name. |
+| `tests/unit/infrastructure/delivery_note` | `test_jinja_template_engine.py` | The real templates with formatted data (`<Entity>Out` built in the test, not through the format use case): every value and label is printed, optional values are left out. |
+| `tests/unit/infrastructure` | `test_component_dimensions.py` (shared) | Add `DeliveryNoteDesign` - checks without rendering that every child fits its slot and the slots fit the page. |
 
 The Chromium renderer is shared by all documents and already tested in
 `test_chromium_document_renderer.py`.

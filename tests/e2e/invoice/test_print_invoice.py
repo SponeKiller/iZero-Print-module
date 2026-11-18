@@ -11,8 +11,8 @@ from app.infrastructure.api.dependencies.printing import (
 from app.infrastructure.api.main import app
 from app.infrastructure.api.middleware import http_audit
 from app.infrastructure.api.schemas.message_id import MessageId
-from tests.shared.fake_document_renderer import FakeDocumentRenderer
-from tests.shared.fake_template_engine import FakeTemplateEngine
+from tests.support.fake_document_renderer import FakeDocumentRenderer
+from tests.support.fake_template_engine import FakeTemplateEngine
 
 URL = "/api/invoices/print"
 

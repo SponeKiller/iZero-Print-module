@@ -89,14 +89,14 @@ See [errors-and-responses.md](errors-and-responses.md).
 
 | Folder | What it checks |
 |--------|----------------|
-| `tests/unit/domain` | Validation rules of the entities and value objects |
-| `tests/unit/application` | Formatting, and the order of steps of the print use case (ports replaced by the in-memory fakes of `tests/shared/`) |
-| `tests/unit/infrastructure` | The real Jinja engine and templates, the real Chromium renderer, the dimensions of every design |
-| `tests/api` | The HTTP contract: status codes, response bodies, headers |
+| `tests/unit/domain` | Validation rules of the value objects; `invoice/` the entities of the invoice |
+| `tests/unit/application/invoice` | Formatting, and the order of steps of the print use case (ports replaced by the in-memory fakes of `tests/support/`) |
+| `tests/unit/infrastructure` | The real Chromium renderer, the dimensions of every design; `invoice/` the real Jinja engine with the invoice templates |
+| `tests/e2e/invoice` | The HTTP contract: status codes, response bodies, headers |
 | `tests/visual` | The printed PDFs look exactly like their approved images |
 
 Every test file holds its own data; only the fakes of the ports are
-shared (`tests/shared/`). Tests that print a real PDF need Chromium
+shared (`tests/support/`). Tests that print a real PDF need Chromium
 installed and fail without it - they are never skipped.
 
 ## Where to go next

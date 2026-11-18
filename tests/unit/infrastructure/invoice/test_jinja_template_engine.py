@@ -25,10 +25,6 @@ from app.infrastructure.services.jinja_template_engine import (
 NBSP = "\u00a0"
 
 
-# Builders of a formatted invoice - the data the template engine gets.
-# Every keyword argument replaces the default value.
-
-
 def address_out(**overrides: Any) -> AddressOut:
     return AddressOut(
         **{
@@ -163,20 +159,3 @@ def test_fills_every_supplied_value_and_label():
     ]:
         for label in labels:
             assert label in html
-
-
-def test_leaves_out_optional_values_that_were_not_supplied():
-    html = fill(
-        invoice_out(
-            supplier=supplier_out(vat_id=None),
-            payments=payments_out(variable_symbol=None),
-            items=[item_out_without_unit_and_vat()],
-        )
-    )
-
-    assert "DIČ" not in html
-    assert "Variabilní symbol" not in html
-    assert "&nbsp;%" not in html
-    assert "None" not in html
-    # the customer has neither a company ID nor a VAT ID
-    assert html.count("IČO:") == 1

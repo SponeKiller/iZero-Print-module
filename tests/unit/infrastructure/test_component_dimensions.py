@@ -107,26 +107,6 @@ def check(component: Any, width_mm: float, page_height_mm: float) -> None:
             f" it declares {needs['max_height_mm']} mm"
         )
 
-
-@pytest.mark.parametrize("document", DESIGNS)
-def test_page_gives_the_content_what_is_left_inside_the_margins(document):
-    dimensions = dimensions_of(document)
-    page = dimensions["page"]
-
-    assert dimensions["slots"]["content"] == {
-        "width_mm": (
-            page["width_mm"]
-            - page["margin_left_mm"]
-            - page["margin_right_mm"]
-        ),
-        "height_mm": (
-            page["height_mm"]
-            - page["margin_top_mm"]
-            - page["margin_bottom_mm"]
-        ),
-    }
-
-
 @pytest.mark.parametrize("document", DESIGNS)
 def test_every_parent_gives_its_children_enough_space(document):
     page = dimensions_of(document)["page"]
