@@ -174,5 +174,3 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-# Rendered pages of failed visual tests
-tests/visual/*/failed/

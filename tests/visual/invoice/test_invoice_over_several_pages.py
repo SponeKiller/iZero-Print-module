@@ -1,8 +1,3 @@
-"""
-Visual test: invoice with 60 items over three pages.
-The printed PDF must look like `images/<platform>/test_invoice_over_several_pages*.png`
-(see `tests/visual/compare_pdf.py`).
-"""
 from datetime import date
 from decimal import Decimal
 
@@ -69,7 +64,6 @@ INVOICE = InvoiceIn(
 
 
 def test_invoice_over_several_pages():
-    # the header of the item table repeats on every page, no row is split
     pdf = PrintInvoice(
         JinjaTemplateEngine(settings.templates_dir),
         ChromiumDocumentRenderer(),

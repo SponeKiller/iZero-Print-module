@@ -93,7 +93,7 @@ See [errors-and-responses.md](errors-and-responses.md).
 | `tests/unit/application/invoice` | Formatting, and the order of steps of the print use case (ports replaced by the in-memory fakes of `tests/support/`) |
 | `tests/unit/infrastructure` | The real Chromium renderer, the dimensions of every design; `invoice/` the real Jinja engine with the invoice templates |
 | `tests/e2e/invoice` | The HTTP contract: status codes, response bodies, headers |
-| `tests/visual` | The printed PDFs look exactly like their approved images |
+| `tests/visual` | The printed PDFs look like their approved images |
 
 Every test file holds its own data; only the fakes of the ports are
 shared (`tests/support/`). Tests that print a real PDF need Chromium

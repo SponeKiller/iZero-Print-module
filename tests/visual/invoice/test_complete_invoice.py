@@ -1,8 +1,3 @@
-"""
-Visual test: invoice with every value supplied, one page.
-The printed PDF must look like `images/<platform>/test_complete_invoice*.png`
-(see `tests/visual/compare_pdf.py`).
-"""
 from datetime import date
 from decimal import Decimal
 

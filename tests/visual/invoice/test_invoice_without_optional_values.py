@@ -1,9 +1,3 @@
-"""
-Visual test: invoice without any optional value (company IDs, VAT
-IDs, unit, VAT rate, variable symbol), one page.
-The printed PDF must look like `images/<platform>/test_invoice_without_optional_values*.png`
-(see `tests/visual/compare_pdf.py`).
-"""
 from datetime import date
 from decimal import Decimal
 

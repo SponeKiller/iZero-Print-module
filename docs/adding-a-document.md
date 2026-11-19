@@ -1,13 +1,9 @@
 # Adding a document
+This document will describe how to add a new document do Print Module 
 
-How to add another printed document next to the invoice. The example is
-a delivery note (`delivery_note`, `DeliveryNote`); replace the names
-with your document. Copy the invoice whenever you are unsure - every
-step below has its invoice counterpart.
-
-Read [overview.md](overview.md) first: validate, format, fill, render.
-
-## 1. Domain - what may be printed
+## 1. Domain Layer
+Separate document on components
+Validates data - dtype, length, required ... 
 
 `app/domain/delivery_notes/entities/`
 
@@ -155,19 +151,9 @@ typical cases (`test_complete_delivery_note.py`,
 prints it with the real adapters and calls
 `assert_pdf_looks_like(pdf, __file__)` from `tests/visual/compare_pdf.py`.
 
-The approved images are named after the test file, in a folder per
-platform: `images/<platform>/<test file>.png`, or
-`<test file>_page_<n>.png` for every page of a longer document.
-
-Approve the look once and on every intended change of the templates:
-
-```powershell
-$env:UPDATE_VISUAL = "1"; pytest tests/visual; Remove-Item Env:UPDATE_VISUAL
-```
-
-Look at the written images and commit them. Fonts render differently on
-every platform; CI compares `images/linux/` - create them in the Docker
-image (see the README).
+The approved images are named after the test file: `images/<test file>.png`,
+or `images/<test file>_page_<n>.png` for every page of a longer document.
+A new test fails until its approved images, rendered on Linux, are there.
 
 ## 8. Documentation
 

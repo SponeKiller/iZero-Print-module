@@ -79,28 +79,24 @@ test file (`tests/visual/compare_pdf.py`):
 ```
 tests/visual/invoice/
 ├── test_complete_invoice.py
-└── images/<platform>/
+└── images/
     ├── test_complete_invoice.png                 one page
     └── test_invoice_over_several_pages_page_1.png  more pages: _page_<n>
 ```
 
-A failed test writes the rendered pages and diff masks to
-`tests/visual/<document>/failed/<platform>/`.
+Pages are rendered with pypdfium2 and compared in gray scale with
+Pillow; a page fails when a single pixel differs by more than 5 (of
+255). The rendering scale and the difference are in
+`tests/visual/config.py`.
 
-After an intended change of the look, approve the new images and commit
-them:
+The tests only compare and write nothing. A test fails when a page has
+no approved image, has a different size or a pixel differs (the message
+names the page, the largest difference and the area of the differing
+pixels, in pixels from the top left corner), or when an approved image
+belongs to a page the PDF no longer has.
 
-```powershell
-$env:UPDATE_VISUAL = "1"; pytest tests/visual; Remove-Item Env:UPDATE_VISUAL
-```
-
-Fonts render differently on every platform, so every platform has its
-own folder of images (`win32`, `linux`). CI compares the `linux` ones;
-create them in the image:
-
-```powershell
-docker run --rm --user root -e UPDATE_VISUAL=1 -v "${PWD}:/work" -w /work --entrypoint sh izero-print-module -c "pip install -q -r requirements-dev.txt && pytest -p no:cacheprovider tests/visual"
-```
+Fonts differ between operating systems, so the approved images are
+rendered on Linux, like in CI.
 
 CI runs ruff and the single-Alembic-head check (`lint.yml`) and the tests
 (`test.yml`) on every pull request to `main`.
